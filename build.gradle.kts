@@ -3,8 +3,8 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.9.21"
-    id("io.gitlab.arturbosch.detekt") version "1.23.4"
+    alias(stuff.plugins.kotlin.jvm)
+    alias(stuff.plugins.detekt)
 }
 
 allprojects {
