@@ -1,4 +1,4 @@
 rootProject.name = "kotstruct"
 
-include("kotstruct-api")
-include("kotstruct-generator")
+includeBuild("kotstruct-lib")
+includeBuild("kotstruct-test")
