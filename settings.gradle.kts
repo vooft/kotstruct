@@ -1,4 +1,13 @@
 rootProject.name = "kotstruct"
 
-includeBuild("kotstruct-lib")
-includeBuild("kotstruct-test")
+include("kotstruct-api")
+include("kotstruct-generator")
+include("kotstruct-test")
+
+dependencyResolutionManagement {
+    versionCatalogs {
+        create("stuff") {
+            from(files("./gradle/stuff.versions.toml"))
+        }
+    }
+}

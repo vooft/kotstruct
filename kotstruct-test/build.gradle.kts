@@ -2,8 +2,10 @@ plugins {
     `java-library`
     alias(stuff.plugins.kotlin.jvm)
     alias(stuff.plugins.detekt)
+    alias(stuff.plugins.ksp)
 }
 
 dependencies {
-    implementation("io.github.vooft:kotstruct-api")
+    implementation(project(":kotstruct-api"))
+    ksp(project(":kotstruct-generator"))
 }
