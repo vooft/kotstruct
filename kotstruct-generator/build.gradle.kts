@@ -4,15 +4,15 @@ plugins {
 
 dependencies {
     implementation(project(":kotstruct-api"))
-    implementation(stuff.ksp.api)
-    implementation(stuff.kotlinpoet.ksp)
+    implementation(libs.ksp.api)
+    implementation(libs.kotlinpoet.ksp)
 
-    testImplementation(stuff.compile.testing.ksp)
-    testImplementation(stuff.bundles.testing)
+    testImplementation(libs.compile.testing.ksp)
+    testImplementation(libs.bundles.testing)
 }
 
-val kotlinVersion = stuff.versions.kotlin.get()
-val kspVersion = stuff.versions.ksp.get()
+val kotlinVersion = libs.versions.kotlin.get()
+val kspVersion = libs.versions.ksp.get()
 require(kspVersion.startsWith("$kotlinVersion-")) {
     "KSP and Kotlin versions must be aligned, but are: kotlin=$kotlinVersion ksp=$kspVersion"
 }
