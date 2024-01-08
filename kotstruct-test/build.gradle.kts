@@ -8,4 +8,6 @@ plugins {
 dependencies {
     implementation(project(":kotstruct-api"))
     ksp(project(":kotstruct-generator"))
+
+    testImplementation(stuff.bundles.testing)
 }

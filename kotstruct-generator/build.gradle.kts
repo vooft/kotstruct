@@ -5,12 +5,10 @@ plugins {
 dependencies {
     implementation(project(":kotstruct-api"))
     implementation(stuff.ksp.api)
+    implementation(stuff.kotlinpoet.ksp)
 
-    testImplementation("com.github.tschuchortdev:kotlin-compile-testing-ksp:1.5.0")
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.2")
-    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.9.2")
-    testImplementation("io.kotest:kotest-assertions-core-jvm:5.8.0")
-    testImplementation("io.mockk:mockk:1.13.8")
+    testImplementation(stuff.compile.testing.ksp)
+    testImplementation(stuff.bundles.testing)
 }
 
 val kotlinVersion = stuff.versions.kotlin.get()
