@@ -14,7 +14,7 @@ kotlinpoet-ksp = { module = "com.squareup:kotlinpoet-ksp", version = "1.15.3" }
 
 kotest-runner = { module = "io.kotest:kotest-runner-junit5", version.ref = "kotest" }
 kotest-assertion = { module = "io.kotest:kotest-assertions-core-jvm", version.ref = "kotest" }
-mockk = { module = "io.mockk:mockk", version = "1.13.8" }
+mockk = { module = "io.mockk:mockk", version = "1.13.9" }
 
 compile-testing-ksp = { module = "com.github.tschuchortdev:kotlin-compile-testing-ksp", version = "1.5.0" }
 
