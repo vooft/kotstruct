@@ -4,12 +4,16 @@ import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import java.util.UUID
 
-class ExampleTest {
+class ExampleMapperTest {
     @Test
     fun `should map data classes`() {
         val mapper = KotStructGeneratedExampleMapper()
 
-        val from = FromDto(UUID.randomUUID(), UUID.randomUUID().toString(), UUID.randomUUID())
+        val from = ExampleMapper.FromDto(
+            id = UUID.randomUUID(),
+            name = UUID.randomUUID().toString(),
+            extraProperty = UUID.randomUUID()
+        )
 
         val to = mapper.map(from)
 

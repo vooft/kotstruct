@@ -3,11 +3,9 @@ package io.github.vooft.kotstruct.ksp
 import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.SourceFile
 import com.tschuchort.compiletesting.kspSourcesDir
-import com.tschuchort.compiletesting.symbolProcessorProviders
 import io.kotest.matchers.paths.shouldExist
 import io.kotest.matchers.shouldBe
 import org.intellij.lang.annotations.Language
-import org.junit.jupiter.api.DynamicTest.dynamicTest
 import org.junit.jupiter.api.TestFactory
 import kotlin.io.path.readText
 
@@ -44,9 +42,8 @@ class DataClassTargetOneToOneTest {
     ).dynamicTests {
         val kotlinSource = SourceFile.kotlin(
             "ExampleMapper.kt", """
-                import io.github.vooft.kotstruct.KotStructMapper
                 data class ToDto(val id: String, val name: String)
-                interface ExampleMapper: KotStructMapper<FromDto, ToDto>
+                interface ExampleMapper: io.github.vooft.kotstruct.KotStructMapper<FromDto, ToDto>
             """
         )
 
@@ -71,32 +68,14 @@ class DataClassTargetOneToOneTest {
     ).dynamicTests {
         val kotlinSource = SourceFile.kotlin(
             "ExampleMapper.kt", """
-                import io.github.vooft.kotstruct.KotStructMapper
                 data class ToDto(val id: String, val name: String)
-                interface ExampleMapper: KotStructMapper<FromDto, ToDto>
+                interface ExampleMapper: io.github.vooft.kotstruct.KotStructMapper<FromDto, ToDto>
             """
         )
 
         val result = compile(kotlinSource, it)
         result.exitCode shouldBe KotlinCompilation.ExitCode.COMPILATION_ERROR
     }
-}
-
-private fun createCompilation(src: SourceFile, vararg miscFiles: SourceFile): KotlinCompilation {
-    return KotlinCompilation().apply {
-        sources = listOf(src) + miscFiles.toList()
-        symbolProcessorProviders = listOf(KotStructMapperProcessorProvider())
-        inheritClassPath = true
-        messageOutputStream = System.out // see diagnostics in real time
-    }
-}
-
-private fun compile(src: SourceFile, vararg miscFiles: SourceFile): KotlinCompilation.Result {
-    return createCompilation(src, *miscFiles).compile()
-}
-
-private fun Map<String, SourceFile>.dynamicTests(body: (SourceFile) -> Unit) = map { (name, fromDtoCode) ->
-    dynamicTest(name) { body(fromDtoCode) }
 }
 
 private fun SourceFile.Companion.fromDto(@Language("kotlin") contents: String) = kotlin("FromDto.kt", contents)
