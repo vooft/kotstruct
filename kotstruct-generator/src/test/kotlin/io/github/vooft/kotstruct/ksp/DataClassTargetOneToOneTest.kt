@@ -11,12 +11,36 @@ import org.junit.jupiter.api.DynamicTest.dynamicTest
 import org.junit.jupiter.api.TestFactory
 import kotlin.io.path.readText
 
-class DataClassTargetTest {
+class DataClassTargetOneToOneTest {
     @TestFactory
     fun `should generate when target is data class and source`() = mapOf(
         "is a data class" to SourceFile.fromDto(
             contents = "data class FromDto(val id: String, val name: String, val extraProperty: String)"
-        )
+        ),
+        "is not a data class with calculated fields" to SourceFile.fromDto(
+            contents = """
+                class FromDto {
+                    val id = "id" + java.util.UUID.randomUUID()
+                    val name = "name" + java.util.UUID.randomUUID()
+                }
+            """.trimIndent()
+        ),
+        "is not a data class and without backing fields" to SourceFile.fromDto(
+            contents = """
+                class FromDto {
+                    val id: String get() = "id" + java.util.UUID.randomUUID()
+                    val name: String get() = "name" + java.util.UUID.randomUUID()
+                }
+            """.trimIndent()
+        ),
+        "is not a data class with lateinit var fields" to SourceFile.fromDto(
+            contents = """
+                class FromDto {
+                    lateinit var id: String
+                    lateinit var name: String
+                }
+            """.trimIndent()
+        ),
     ).dynamicTests {
         val kotlinSource = SourceFile.kotlin(
             "ExampleMapper.kt", """
