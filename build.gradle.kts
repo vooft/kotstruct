@@ -20,6 +20,12 @@ subprojects {
     group = "io.github.vooft"
     version = "1.0-SNAPSHOT"
 
+    detekt {
+        buildUponDefaultConfig = true
+        config.from(files("$rootDir/detekt.yml"))
+        basePath = rootDir.absolutePath
+    }
+
     tasks.withType<Test> {
         useJUnitPlatform()
         testLogging {
