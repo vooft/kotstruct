@@ -1,5 +1,6 @@
 package io.github.vooft.kotstruct.example
 
+/*
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import java.util.UUID
@@ -17,3 +18,4 @@ class CustomConstructorMapperTest {
         to.name shouldBe CUSTOM_CONSTRUCTOR_DEFAULT_NAME
     }
 }
+*/

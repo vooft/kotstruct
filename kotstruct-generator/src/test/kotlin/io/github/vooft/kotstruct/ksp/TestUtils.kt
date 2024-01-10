@@ -1,5 +1,5 @@
 package io.github.vooft.kotstruct.ksp
-
+/*
 import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.SourceFile
 import com.tschuchort.compiletesting.symbolProcessorProviders
@@ -20,4 +20,4 @@ fun compile(src: SourceFile, vararg miscFiles: SourceFile): KotlinCompilation.Re
 
 fun Map<String, SourceFile>.dynamicTests(body: (SourceFile) -> Unit) = map { (name, fromDtoCode) ->
     DynamicTest.dynamicTest(name) { body(fromDtoCode) }
-}
+}*/

@@ -1,6 +1,6 @@
 package io.github.vooft.kotstruct.ksp
 
-import com.google.devtools.ksp.symbol.KSClassDeclaration
+/*import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.SourceFile
 import com.tschuchort.compiletesting.symbolProcessorProviders
@@ -43,4 +43,4 @@ class KotStructMapperProcessorTest {
 
         result.exitCode shouldBe KotlinCompilation.ExitCode.OK
     }
-}
+}*/

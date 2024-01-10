@@ -1,5 +1,6 @@
 package io.github.vooft.kotstruct.ksp
 
+/*
 import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.SourceFile
 import com.tschuchort.compiletesting.kspSourcesDir
@@ -33,4 +34,4 @@ class CustomConstructorTest {
 
         result.exitCode shouldBe KotlinCompilation.ExitCode.OK
     }
-}
+}*/

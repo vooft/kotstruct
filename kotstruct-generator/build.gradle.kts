@@ -4,8 +4,10 @@ plugins {
 
 dependencies {
     implementation(project(":kotstruct-api"))
+    implementation(libs.kotlin.reflect)
     implementation(libs.ksp.api)
     implementation(libs.kotlinpoet.ksp)
+    implementation("org.reflections:reflections:0.10.2")
 
     testImplementation(libs.compile.testing.ksp)
     testImplementation(libs.bundles.testing)
