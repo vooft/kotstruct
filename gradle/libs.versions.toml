@@ -9,6 +9,8 @@ detekt = { id = "io.gitlab.arturbosch.detekt", version = "1.23.4" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 
 [libraries]
+kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
+
 ksp-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
 kotlinpoet-ksp = { module = "com.squareup:kotlinpoet-ksp", version = "1.15.3" }
 
@@ -17,6 +19,8 @@ kotest-assertion = { module = "io.kotest:kotest-assertions-core-jvm", version.re
 mockk = { module = "io.mockk:mockk", version = "1.13.9" }
 
 compile-testing-ksp = { module = "com.github.tschuchortdev:kotlin-compile-testing-ksp", version = "1.5.0" }
+
+reflections = { module = "org.reflections:reflections", version = "0.10.2" }
 
 [bundles]
 testing = [ "kotest-runner", "kotest-assertion", "mockk" ]
