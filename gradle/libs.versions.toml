@@ -20,5 +20,7 @@ mockk = { module = "io.mockk:mockk", version = "1.13.9" }
 
 compile-testing-ksp = { module = "com.github.tschuchortdev:kotlin-compile-testing-ksp", version = "1.5.0" }
 
+reflections = { module = "org.reflections:reflections", version = "0.10.2" }
+
 [bundles]
 testing = [ "kotest-runner", "kotest-assertion", "mockk" ]
