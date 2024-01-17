@@ -6,9 +6,11 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":kotstruct-api"))
     ksp(project(":kotstruct-generator"))
     ksp(project(":kotstruct-example:mappers"))
+
+    implementation(project(":kotstruct-api"))
+    implementation(project(":kotstruct-example:mappers"))
 
     testImplementation(libs.bundles.testing)
 }

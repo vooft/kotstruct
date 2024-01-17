@@ -5,5 +5,8 @@ style:
     comments:
       - reason: 'Forbidden STOPSHIP todo marker in comment, please address the problem before shipping the code.'
         value: 'STOPSHIP:'
+complexity:
+  LongMethod:
+    threshold: 70
 
 

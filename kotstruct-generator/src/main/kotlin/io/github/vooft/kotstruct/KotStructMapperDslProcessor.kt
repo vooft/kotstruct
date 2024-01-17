@@ -15,8 +15,8 @@ import com.squareup.kotlinpoet.asTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
 import org.reflections.Reflections
 import kotlin.reflect.KClass
+import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.memberProperties
-import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.jvmErasure
 
 class KotStructMapperDslProcessor(private val prefix: String, private val codeGenerator: CodeGenerator) : SymbolProcessor {
@@ -59,25 +59,26 @@ class KotStructMapperDslProcessor(private val prefix: String, private val codeGe
 
         val fromProperties = sourceClassType.jvmErasure.memberProperties.associate { it.name to it.returnType }
 
-        // TODO: handle custom-defined constructor
-//        val customConstructor = mapperClass.declarations
-//            .filterIsInstance<KSFunctionDeclaration>()
-//            .singleOrNull { function ->
-//                function.annotations.any { it.annotationType.qualifiedName == KotStructCustomConstructor::class.qualifiedName }
-//            }
-//
-//        if (customConstructor != null) {
-//            require(customConstructor.returnType?.resolve()?.declaration == toClass) {
-//                "Custom constructor must return $toClass, but returns ${customConstructor.returnType}"
-//            }
-//        }
+        val descriptorClass = mapperClass.findAnnotation<KotStructDescriptor>()?.descriptor
+        val customConstructor = descriptorClass?.let {
+            val descriptor = requireNotNull(it.objectInstance) {
+                "KotStructDescriptor must reference an object, but $it is not"
+            }
 
-//        val toTypeConstructor = customConstructor
-//            ?: requireNotNull(toClass.primaryConstructor) { "Primary constructor must be present in $toClass" }
+            @Suppress("SwallowedException")
+            try {
+                require(descriptor.constructor.returnType == targetClassType) {
+                    "Custom constructor must return $targetClassType, but returns ${descriptor.constructor.returnType}"
+                }
 
-        val toTypeConstructor = requireNotNull(targetClassType.jvmErasure.primaryConstructor) {
-            "Primary constructor must be present in $targetClassType"
+                descriptor.constructor
+            } catch (e: KotStructNotDefinedException) {
+                // ignore
+                null
+            }
         }
+
+        val toTypeConstructor = customConstructor ?: targetClassType.primaryConstructor
 
         val toArguments = toTypeConstructor.parameters.associate { it.name!! to it.type }
 
@@ -99,13 +100,12 @@ class KotStructMapperDslProcessor(private val prefix: String, private val codeGe
                             .addParameter("src", sourceClassType.asTypeName())
                             .addCode(
                                 CodeBlock.builder()
-//                            .apply {
-//                                when(toTypeConstructor.isConstructor()) {
-//                                    true -> add("return %T(", toClass.toClassName())
-//                                    false -> add("return %N(", toTypeConstructor.simpleName.asString())
-//                                }
-//                            }
-                                    .add("return %T(", targetClassType.asTypeName())
+                                    .apply {
+                                        when (customConstructor) {
+                                            null -> add("return %T(", targetClassType.asTypeName())
+                                            else -> add("return %T.constructor(", descriptorClass)
+                                        }
+                                    }
                                     .apply {
                                         toTypeConstructor.parameters.dropLast(1)
                                             .forEach { add("src.%N, ", it.name) }
@@ -125,7 +125,7 @@ class KotStructMapperDslProcessor(private val prefix: String, private val codeGe
 }
 
 class KotStructMapperDslProcessorProvider(private val prefix: String = "") : SymbolProcessorProvider {
-    constructor(clazz: KClass<*>): this(clazz.packageName)
+    constructor(clazz: KClass<*>) : this(clazz.packageName)
 
     override fun create(environment: SymbolProcessorEnvironment): SymbolProcessor {
         return KotStructMapperDslProcessor(prefix, environment.codeGenerator)
