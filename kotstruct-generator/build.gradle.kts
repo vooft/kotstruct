@@ -8,6 +8,7 @@ dependencies {
     implementation(libs.ksp.api)
     implementation(libs.kotlinpoet.ksp)
     implementation("org.reflections:reflections:0.10.2")
+    implementation("com.github.f4b6a3:ulid-creator:5.2.3")
 
     testImplementation(libs.compile.testing.ksp)
     testImplementation(libs.bundles.testing)
