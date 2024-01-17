@@ -59,7 +59,7 @@ class KotStructMapperDslProcessor(private val prefix: String, private val codeGe
 
         val fromProperties = sourceClassType.jvmErasure.memberProperties.associate { it.name to it.returnType }
 
-        val descriptorClass = mapperClass.findAnnotation<KotStructDescriptor>()?.descriptor
+        val descriptorClass = mapperClass.findAnnotation<KotStructMapperDescriptor>()?.descriptor
         val customConstructor = descriptorClass?.let {
             val descriptor = requireNotNull(it.objectInstance) {
                 "KotStructDescriptor must reference an object, but $it is not"

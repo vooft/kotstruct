@@ -7,7 +7,7 @@ interface KotStructMapper<Source: Any, Target: Any> {
     fun map(src: Source): Target
 }
 
-interface KotStructDescriptorValue<out Target: Any> {
+interface KotStructDescriptor<out Target: Any> {
 
     /**
      * Custom constructor for the target class
@@ -31,6 +31,6 @@ interface KotStructDescriptorValue<out Target: Any> {
 class KotStructNotDefinedException : RuntimeException()
 
 @Target(AnnotationTarget.CLASS)
-annotation class KotStructDescriptor(val descriptor: KClass<out KotStructDescriptorValue<*>>)
+annotation class KotStructMapperDescriptor(val descriptor: KClass<out KotStructDescriptor<*>>)
 
 

@@ -6,8 +6,8 @@ import com.tschuchort.compiletesting.symbolProcessorProviders
 import io.github.vooft.kotstruct.GENERATED_PACKAGE
 import io.github.vooft.kotstruct.GENERATED_PREFIX
 import io.github.vooft.kotstruct.KotStructDescriptor
-import io.github.vooft.kotstruct.KotStructDescriptorValue
 import io.github.vooft.kotstruct.KotStructMapper
+import io.github.vooft.kotstruct.KotStructMapperDescriptor
 import io.github.vooft.kotstruct.KotStructMapperDslProcessorProvider
 import io.kotest.matchers.paths.shouldExist
 import io.kotest.matchers.shouldBe
@@ -41,10 +41,10 @@ class HappyPathCustomConstructorTest {
         constructor(id: String): this(id = id, name = "this is a default name")
     }
 
-    @KotStructDescriptor(CustomConstructorMapperDescriptor::class)
+    @KotStructMapperDescriptor(CustomConstructorMapperDescriptor::class)
     interface CustomConstructorMapper : KotStructMapper<SourceDto, TargetDto>
 
-    object CustomConstructorMapperDescriptor : KotStructDescriptorValue<TargetDto> {
+    object CustomConstructorMapperDescriptor : KotStructDescriptor<TargetDto> {
         override val constructor: KFunction1<String, TargetDto> = ::TargetDto
     }
 }
