@@ -1,6 +1,6 @@
 package io.github.vooft.kotstruct.ksp
 
-/*
+
 import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.SourceFile
 import com.tschuchort.compiletesting.kspSourcesDir
@@ -79,4 +79,4 @@ class DataClassTargetOneToOneTest {
     }
 }
 
-private fun SourceFile.Companion.fromDto(@Language("kotlin") contents: String) = kotlin("FromDto.kt", contents)*/
+private fun SourceFile.Companion.fromDto(@Language("kotlin") contents: String) = kotlin("FromDto.kt", contents)

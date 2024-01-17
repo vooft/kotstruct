@@ -25,4 +25,4 @@ class KotStructMapperDslProcessorTest {
 data class FromDto(val id: String, val name: String)
 data class ToDto(val id: String, val name: String)
 
-interface ExampleMapper: KotStructMapper<FromDto, ToDto>
+object ExampleMapper: KotStructMapper<FromDto, ToDto>
