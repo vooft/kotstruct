@@ -27,8 +27,12 @@ class UnhappyPathDataClassTargetOneToOneTest {
     }
 
     data class NotEnoughFieldsSourceDto(val id: String)
-    interface NotEnoughFieldsMapper : KotStructMapper<NotEnoughFieldsSourceDto, TestTargetDto>
+    interface NotEnoughFieldsMapper : KotStructMapper<NotEnoughFieldsSourceDto, TestTargetDto> {
+        override fun map(src: NotEnoughFieldsSourceDto): TestTargetDto
+    }
 
     data class NoMatchingFieldsSourceDto(val id: String, val name1: String)
-    interface NoMatchingFieldsMapper : KotStructMapper<NoMatchingFieldsSourceDto, TestTargetDto>
+    interface NoMatchingFieldsMapper : KotStructMapper<NoMatchingFieldsSourceDto, TestTargetDto> {
+        override fun map(src: NoMatchingFieldsSourceDto): TestTargetDto
+    }
 }

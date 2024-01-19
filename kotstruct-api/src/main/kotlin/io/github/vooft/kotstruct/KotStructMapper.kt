@@ -26,7 +26,13 @@ interface KotStructDescriptor<out Target: Any> {
     val constructor: KFunction<Target> get() = throw KotStructNotDefinedException()
 
     val imports: List<KotStructMapper<*, *>> get() = listOf()
+
+    companion object {
+        val EMPTY_CLASS: KClass<out KotStructDescriptor<*>> = EmptyKotStructDescriptor::class
+    }
 }
+
+internal object EmptyKotStructDescriptor : KotStructDescriptor<Any>
 
 class KotStructNotDefinedException : RuntimeException()
 
