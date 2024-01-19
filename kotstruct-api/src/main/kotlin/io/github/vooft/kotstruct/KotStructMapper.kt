@@ -2,37 +2,35 @@ package io.github.vooft.kotstruct
 
 import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
+import kotlin.reflect.KType
 
 interface KotStructMapper
 
-interface KotStructDescriptor<out Target: Any> {
-
-    /**
-     * Custom constructor for the target class
-     *
-     * In order to use a secondary constructor, must specify correct KFunctionN, for example:
-     * ```
-     * class TargetDto(val id: String, val name: String) {
-     *     constructor(id: String) : this(id, "default value")
-     * }
-     *
-     * object MyMapperDescriptor : KotStructDescriptor<TargetDto> {
-     *     override val constructor: KFunction2<String, String, TargetDto> = ::TargetDto
-     * }
-     * ```
-     */
-    val constructor: KFunction<Target> get() = throw KotStructNotDefinedException()
+interface KotStructDescriptor {
+    val mappings: Map<String, MappingDefinition<*>>
 
     companion object {
-        val EMPTY_CLASS: KClass<out KotStructDescriptor<*>> = EmptyKotStructDescriptor::class
+        val EMPTY_CLASS: KClass<out KotStructDescriptor> = EmptyKotStructDescriptor::class
     }
 }
 
-internal object EmptyKotStructDescriptor : KotStructDescriptor<Any>
+data class MappingDefinition<Target: Any>(
+    val factory: KFunction<Target>,
+    val mapper: Function<Target>
+) {
+    companion object {
+        fun <Target: Any> of(factory: KFunction<Target>, mapper: Function<Target>) =
+            MappingDefinition(factory, mapper)
+    }
+}
 
-class KotStructNotDefinedException : RuntimeException()
+fun KType.mappingInto(target: KType) = toString() + "____" + target.toString()
+
+internal object EmptyKotStructDescriptor : KotStructDescriptor {
+    override val mappings: Map<String, MappingDefinition<*>> = mapOf()
+}
 
 @Target(AnnotationTarget.CLASS)
-annotation class KotStructMapperDescriptor(val descriptor: KClass<out KotStructDescriptor<*>>)
+annotation class KotStructDescribedBy(val descriptor: KClass<out KotStructDescriptor>)
 
 

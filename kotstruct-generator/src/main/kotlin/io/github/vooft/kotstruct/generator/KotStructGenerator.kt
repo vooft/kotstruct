@@ -8,9 +8,9 @@ import com.squareup.kotlinpoet.asTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
 import io.github.vooft.kotstruct.GENERATED_PACKAGE
 import io.github.vooft.kotstruct.GENERATED_PREFIX
+import io.github.vooft.kotstruct.KotStructDescribedBy
 import io.github.vooft.kotstruct.KotStructDescriptor
 import io.github.vooft.kotstruct.KotStructMapper
-import io.github.vooft.kotstruct.KotStructMapperDescriptor
 import io.github.vooft.kotstruct.sha1
 import kotlin.reflect.KClass
 import kotlin.reflect.full.declaredMemberFunctions
@@ -38,7 +38,7 @@ class KotStructGenerator(private val codeGenerator: CodeGenerator, private val l
 
 
         logger.info("Found at class $mapperClass methods: $memberFunctions")
-        val descriptorClass = mapperClass.findAnnotation<KotStructMapperDescriptor>()?.descriptor
+        val descriptorClass = mapperClass.findAnnotation<KotStructDescribedBy>()?.descriptor
 
         for (memberFunction in memberFunctions) {
             when {
