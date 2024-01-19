@@ -12,7 +12,7 @@ ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
 
 ksp-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
-kotlinpoet-ksp = { module = "com.squareup:kotlinpoet-ksp", version = "1.15.3" }
+kotlinpoet-ksp = { module = "com.squareup:kotlinpoet-ksp", version = "1.16.0" }
 
 kotest-runner = { module = "io.kotest:kotest-runner-junit5", version.ref = "kotest" }
 kotest-assertion = { module = "io.kotest:kotest-assertions-core-jvm", version.ref = "kotest" }
