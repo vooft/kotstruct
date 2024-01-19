@@ -3,9 +3,7 @@ package io.github.vooft.kotstruct
 import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
 
-interface KotStructMapper<Source: Any, Target: Any> {
-    fun map(src: Source): Target
-}
+interface KotStructMapper
 
 interface KotStructDescriptor<out Target: Any> {
 
@@ -24,8 +22,6 @@ interface KotStructDescriptor<out Target: Any> {
      * ```
      */
     val constructor: KFunction<Target> get() = throw KotStructNotDefinedException()
-
-    val imports: List<KotStructMapper<*, *>> get() = listOf()
 
     companion object {
         val EMPTY_CLASS: KClass<out KotStructDescriptor<*>> = EmptyKotStructDescriptor::class

@@ -15,10 +15,9 @@ import io.github.vooft.kotstruct.sha1
 import kotlin.reflect.KClass
 import kotlin.reflect.full.declaredMemberFunctions
 import kotlin.reflect.full.findAnnotation
-import kotlin.reflect.full.memberFunctions
 
 class KotStructGenerator(private val codeGenerator: CodeGenerator, private val logger: KSPLogger) {
-    fun process(mapperClass: KClass<out KotStructMapper<*, *>>) {
+    fun process(mapperClass: KClass<out KotStructMapper>) {
         // TODO: use sha1
         val generatedClassName = "$GENERATED_PREFIX${mapperClass.simpleName}"
         println("generatedClassName: $generatedClassName, ${mapperClass.toString().sha1()}")
@@ -34,8 +33,8 @@ class KotStructGenerator(private val codeGenerator: CodeGenerator, private val l
             .writeTo(codeGenerator, false)
     }
 
-    private fun TypeSpec.Builder.generateMemberFunctions(mapperClass: KClass<out KotStructMapper<*, *>>): TypeSpec.Builder {
-        val memberFunctions = mapperClass.declaredMemberFunctions + mapperClass.memberFunctions.filter { it.name == "map" }
+    private fun TypeSpec.Builder.generateMemberFunctions(mapperClass: KClass<out KotStructMapper>): TypeSpec.Builder {
+        val memberFunctions = mapperClass.declaredMemberFunctions
 
 
         logger.info("Found at class $mapperClass methods: $memberFunctions")
