@@ -7,7 +7,7 @@ import kotlin.reflect.KFunction
 import kotlin.reflect.KType
 import kotlin.reflect.full.primaryConstructor
 
-fun KClass<out KotStructMapper<*, *>>.findKotStructMapperSupertype(): KType {
+fun KClass<out KotStructMapper>.findKotStructMapperSupertype(): KType {
     return supertypes.single { it.classifier == KotStructMapper::class }
 }
 

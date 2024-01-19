@@ -4,6 +4,8 @@ import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.symbolProcessorProviders
 import io.github.vooft.kotstruct.KotStructMapper
 import io.github.vooft.kotstruct.KotStructMapperDslProcessorProvider
+import io.github.vooft.kotstruct.dataclass.onetoone.unhappy.UnhappyPathDataClassTargetOneToOneTest.Mappers.NoMatchingFieldsMapper
+import io.github.vooft.kotstruct.dataclass.onetoone.unhappy.UnhappyPathDataClassTargetOneToOneTest.Mappers.NotEnoughFieldsMapper
 import io.github.vooft.kotstruct.dynamicTests
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.TestFactory
@@ -26,9 +28,16 @@ class UnhappyPathDataClassTargetOneToOneTest {
         result.exitCode shouldBe KotlinCompilation.ExitCode.COMPILATION_ERROR
     }
 
-    data class NotEnoughFieldsSourceDto(val id: String)
-    interface NotEnoughFieldsMapper : KotStructMapper<NotEnoughFieldsSourceDto, TestTargetDto>
+    @Suppress("unused")
+    class Mappers {
+        data class NotEnoughFieldsSourceDto(val id: String)
+        interface NotEnoughFieldsMapper : KotStructMapper {
+            fun map(src: NotEnoughFieldsSourceDto): TestTargetDto
+        }
 
-    data class NoMatchingFieldsSourceDto(val id: String, val name1: String)
-    interface NoMatchingFieldsMapper : KotStructMapper<NoMatchingFieldsSourceDto, TestTargetDto>
+        data class NoMatchingFieldsSourceDto(val id: String, val name1: String)
+        interface NoMatchingFieldsMapper : KotStructMapper {
+            fun map(src: NoMatchingFieldsSourceDto): TestTargetDto
+        }
+    }
 }
