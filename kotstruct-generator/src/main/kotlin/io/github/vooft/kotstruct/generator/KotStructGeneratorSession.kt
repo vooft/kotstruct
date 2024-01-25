@@ -23,27 +23,27 @@ class KotStructGeneratorSession(
     private val method: KFunction<*>,
     private val descriptorClass: KClass<out KotStructDescriptor>
 ) {
+    private val sourceParameterName = requireNotNull(method.parameters.last().name) { "Parameter name can not be null" }
+
     private val sourceClassType = run {
         // first argument is the receiver, second is actual argument
         require(method.parameters.size == 2) { "Mapping method $method must have exactly 1 argument" }
         method.parameters.last().type
     }
 
+    private val descriptor = requireNotNull(descriptorClass.objectInstance) {
+        "@${KotStructDescribedBy::class.simpleName} must reference an object, but $descriptorClass is not"
+    }
+
     private val targetClassType = method.returnType
 
     fun generateMethod(): FunSpec {
         val mappingId = sourceClassType.mappingInto(targetClassType)
-        val customMapping = run {
-            val descriptor = requireNotNull(descriptorClass.objectInstance) {
-                "@${KotStructDescribedBy::class.simpleName} must reference an object, but $descriptorClass is not"
-            }
-
-            descriptor.mappings[mappingId]
-        }
+        val customMapping = descriptor.mappings[mappingId]
 
         return FunSpec.builder("map")
             .addModifiers(KModifier.OVERRIDE)
-            .addParameter("src", sourceClassType.asTypeName())
+            .addParameter(sourceParameterName, sourceClassType.asTypeName())
             .addCode(
                 CodeBlock.builder()
                     .apply {
@@ -64,8 +64,10 @@ class KotStructGeneratorSession(
         add("%T.mappings.getValue(\"$mappingId\")", descriptorClass)
 
         when (this) {
-            is MappingImplementation.CustomMapper1MappingImpl<*, *> -> add("as %T).mapper(src)", this::class.asClassName()
-                .parameterizedBy(sourceClassType.asTypeName(), targetClassType.asTypeName()))
+            is MappingImplementation.CustomMapper1MappingImpl<*, *> -> add(
+                "as %T).mapper($sourceParameterName)", this::class.asClassName()
+                    .parameterizedBy(sourceClassType.asTypeName(), targetClassType.asTypeName())
+            )
         }
     }
 
@@ -80,7 +82,7 @@ class KotStructGeneratorSession(
                 factory.parameters.map { it.type.asTypeName() } + factory.returnType.asTypeName()
             )
         add("return ((%T.mappings.getValue(\"$mappingId\") as %T).factory as %T)(", descriptorClass, this::class, kfunctionClassName)
-        factory.addArguments("src")
+        factory.addArguments(sourceParameterName)
         add(")")
     }
 
@@ -89,19 +91,20 @@ class KotStructGeneratorSession(
         primaryConstructor.validateCouldBePopulatedFrom(sourceClassType)
 
         add("return %T(", asTypeName())
-        primaryConstructor.addArguments("src")
+        primaryConstructor.addArguments(sourceParameterName)
         add(")")
     }
-}
 
-private fun KFunction<Any>.validateCouldBePopulatedFrom(sourceClassType: KType) {
-    val fromProperties = sourceClassType.jvmErasure.memberProperties.associate { it.name to it.returnType }
+    private fun KFunction<Any>.validateCouldBePopulatedFrom(sourceClassType: KType) {
+        val fromProperties = sourceClassType.jvmErasure.memberProperties.associate { it.name to it.returnType }
 
-    val toArguments = parameters.associate { it.name!! to it.type }
+        val toArguments = parameters.associate { it.name!! to it.type }
 
-    for ((name, toType) in toArguments) {
-        val fromType = requireNotNull(fromProperties[name]) { "Can't find matching property $name in $sourceClassType" }
-        require(fromType == toType) { "Source property $name type $fromType doesn't match target type $toType" }
+        for ((name, toType) in toArguments) {
+            val fromType = requireNotNull(fromProperties[name]) { "Can't find matching property $name in $sourceClassType" }
+
+            require(fromType == toType) { "Source property $name type $fromType doesn't match target type $toType" }
+        }
     }
 }
 

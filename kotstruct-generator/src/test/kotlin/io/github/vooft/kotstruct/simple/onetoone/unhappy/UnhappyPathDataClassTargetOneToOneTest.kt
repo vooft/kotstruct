@@ -1,12 +1,12 @@
-package io.github.vooft.kotstruct.dataclass.onetoone.unhappy
+package io.github.vooft.kotstruct.simple.onetoone.unhappy
 
 import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.symbolProcessorProviders
 import io.github.vooft.kotstruct.KotStructMapper
 import io.github.vooft.kotstruct.KotStructMapperDslProcessorProvider
-import io.github.vooft.kotstruct.dataclass.onetoone.unhappy.UnhappyPathDataClassTargetOneToOneTest.Mappers.NoMatchingFieldsMapper
-import io.github.vooft.kotstruct.dataclass.onetoone.unhappy.UnhappyPathDataClassTargetOneToOneTest.Mappers.NotEnoughFieldsMapper
 import io.github.vooft.kotstruct.dynamicTests
+import io.github.vooft.kotstruct.simple.onetoone.unhappy.UnhappyPathDataClassTargetOneToOneTest.Mappers.NoMatchingFieldsMapper
+import io.github.vooft.kotstruct.simple.onetoone.unhappy.UnhappyPathDataClassTargetOneToOneTest.Mappers.NotEnoughFieldsMapper
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.TestFactory
 

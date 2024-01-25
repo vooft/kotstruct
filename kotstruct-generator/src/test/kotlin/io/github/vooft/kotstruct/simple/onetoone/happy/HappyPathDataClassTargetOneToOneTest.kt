@@ -1,4 +1,4 @@
-package io.github.vooft.kotstruct.dataclass.onetoone.happy
+package io.github.vooft.kotstruct.simple.onetoone.happy
 
 import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.kspSourcesDir
@@ -7,10 +7,11 @@ import io.github.vooft.kotstruct.GENERATED_PACKAGE
 import io.github.vooft.kotstruct.GENERATED_PREFIX
 import io.github.vooft.kotstruct.KotStructMapper
 import io.github.vooft.kotstruct.KotStructMapperDslProcessorProvider
-import io.github.vooft.kotstruct.dataclass.onetoone.happy.HappyPathDataClassTargetOneToOneTest.Mappers.RegularClassWithLateinitFieldsMapper
-import io.github.vooft.kotstruct.dataclass.onetoone.happy.HappyPathDataClassTargetOneToOneTest.Mappers.RegularClassWithoutBackingFieldsMapper
-import io.github.vooft.kotstruct.dataclass.onetoone.happy.HappyPathDataClassTargetOneToOneTest.Mappers.SimpleDataClassMapper
 import io.github.vooft.kotstruct.dynamicTests
+import io.github.vooft.kotstruct.simple.onetoone.happy.HappyPathDataClassTargetOneToOneTest.Mappers.RegularClassWithLateinitFieldsMapper
+import io.github.vooft.kotstruct.simple.onetoone.happy.HappyPathDataClassTargetOneToOneTest.Mappers.RegularClassWithoutBackingFieldsMapper
+import io.github.vooft.kotstruct.simple.onetoone.happy.HappyPathDataClassTargetOneToOneTest.Mappers.SimpleDataClassMapper
+import io.github.vooft.kotstruct.simple.onetoone.happy.HappyPathDataClassTargetOneToOneTest.Mappers.SourceParameterNameDifferentMapper
 import io.kotest.matchers.paths.shouldExist
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.TestFactory
@@ -23,6 +24,7 @@ class HappyPathDataClassTargetOneToOneTest {
 
     @TestFactory
     fun `should generate when target is data class and source`() = dynamicTests(
+        "argument is not named src" to SourceParameterNameDifferentMapper::class,
         "is a data class" to SimpleDataClassMapper::class,
         "is not a data class with calculated fields" to Mappers.RegularClassCalculatedFieldsMapper::class,
         "is not a data class and without backing fields" to RegularClassWithoutBackingFieldsMapper::class,
@@ -75,6 +77,10 @@ class HappyPathDataClassTargetOneToOneTest {
 
         interface RegularClassWithLateinitFieldsMapper : KotStructMapper {
             fun map(src: RegularClassWithLateinitFieldsSourceDto): TestTargetDto
+        }
+
+        interface SourceParameterNameDifferentMapper : KotStructMapper {
+            fun map(mySuperCustomArgumentName: SimpleDataClassSourceDto): TestTargetDto
         }
     }
 }
