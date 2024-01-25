@@ -2,6 +2,7 @@ package io.github.vooft.kotstruct.generator
 
 import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.KSPLogger
+import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.asTypeName
@@ -24,12 +25,13 @@ class KotStructGenerator(private val codeGenerator: CodeGenerator, private val l
         FileSpec.builder(GENERATED_PACKAGE, generatedClassName)
             .addType(
                 TypeSpec.classBuilder(generatedClassName)
+                    .addAnnotation(AnnotationSpec.builder(Suppress::class).addMember("\"detekt.all\", \"unchecked_cast\"").build())
                     .addSuperinterface(mapperClass.asTypeName())
                     .generateMemberFunctions(mapperClass)
                     .build()
             )
             .build()
-            .apply {writeTo(System.out) }
+            .apply { writeTo(System.out) }
             .writeTo(codeGenerator, false)
     }
 

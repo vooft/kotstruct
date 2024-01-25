@@ -18,11 +18,11 @@ class UnhappyPathDataClassTargetOneToOneTest {
         "does not have enough fields" to NotEnoughFieldsMapper::class,
         "does not have matching fields" to NoMatchingFieldsMapper::class
     ) {
-        val compilation = KotlinCompilation().apply {
-            sources = listOf()
-            symbolProcessorProviders = listOf(KotStructMapperDslProcessorProvider(UnhappyPathDataClassTargetOneToOneTest::class))
-            inheritClassPath = true
-            messageOutputStream = System.out // see diagnostics in real time
+        val compilation = KotlinCompilation().also {
+            it.sources = listOf()
+            it.symbolProcessorProviders = listOf(KotStructMapperDslProcessorProvider(this::class))
+            it.inheritClassPath = true
+            it.messageOutputStream = System.out // see diagnostics in real time
         }
         val result = compilation.compile()
         result.exitCode shouldBe KotlinCompilation.ExitCode.COMPILATION_ERROR

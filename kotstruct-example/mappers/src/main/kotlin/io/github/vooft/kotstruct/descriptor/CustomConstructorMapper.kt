@@ -3,7 +3,7 @@ package io.github.vooft.kotstruct.descriptor
 import io.github.vooft.kotstruct.KotStructDescribedBy
 import io.github.vooft.kotstruct.KotStructDescriptor
 import io.github.vooft.kotstruct.KotStructMapper
-import io.github.vooft.kotstruct.MappingDefinition
+import io.github.vooft.kotstruct.Mapping
 import io.github.vooft.kotstruct.descriptor.CustomConstructorMapper.SourceDto
 import io.github.vooft.kotstruct.descriptor.CustomConstructorMapper.TargetDto
 import io.github.vooft.kotstruct.mappingInto
@@ -25,9 +25,6 @@ interface CustomConstructorMapper : KotStructMapper {
 object CustomConstructorMapperDescriptor : KotStructDescriptor {
     override val mappings = mapOf(
         typeOf<SourceDto>().mappingInto(typeOf<TargetDto>()) to
-                MappingDefinition.of(
-                    factory = TargetDto::myFactory,
-                    mapper = { TODO() }
-                ))
-    const val DEFAULT_NAME = "this is a default name"
+                Mapping.customFactory(TargetDto::myFactory))
+    val DEFAULT_NAME = this::class.qualifiedName!!
 }
