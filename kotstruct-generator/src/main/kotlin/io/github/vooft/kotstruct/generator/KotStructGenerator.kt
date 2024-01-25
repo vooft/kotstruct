@@ -55,8 +55,12 @@ class KotStructGenerator(private val codeGenerator: CodeGenerator, private val l
 
                 else -> {
                     logger.info("Processing method $memberFunction")
-                    val session = KotStructGeneratorSession(memberFunction, descriptorClass ?: KotStructDescriptor.EMPTY_CLASS)
-                    addFunction(session.generateMethod())
+                    with(KotStructGeneratorSession(
+                        method = memberFunction,
+                        descriptorClass = descriptorClass ?: KotStructDescriptor.EMPTY_CLASS
+                    )) {
+                        generateMethod()
+                    }
                 }
             }
         }

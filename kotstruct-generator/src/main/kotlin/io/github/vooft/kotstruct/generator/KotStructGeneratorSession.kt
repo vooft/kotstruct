@@ -5,6 +5,7 @@ import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.asClassName
 import com.squareup.kotlinpoet.asTypeName
 import io.github.vooft.kotstruct.KotStructDescribedBy
@@ -25,7 +26,7 @@ class KotStructGeneratorSession(
 ) {
     private val sourceParameterName = requireNotNull(method.parameters.last().name) { "Parameter name can not be null" }
 
-    private val sourceClassType = run {
+    private val mapMethodSourceType = run {
         // first argument is the receiver, second is actual argument
         require(method.parameters.size == 2) { "Mapping method $method must have exactly 1 argument" }
         method.parameters.last().type
@@ -35,45 +36,53 @@ class KotStructGeneratorSession(
         "@${KotStructDescribedBy::class.simpleName} must reference an object, but $descriptorClass is not"
     }
 
-    private val targetClassType = method.returnType
+    private val mapMethodTargetType = method.returnType
 
-    fun generateMethod(): FunSpec {
-        val mappingId = sourceClassType.mappingInto(targetClassType)
+    private val rootLevelMappers = descriptor.mappings
+        .asSequence()
+        .filter { (_, mapper) -> mapper is MappingImplementation.CustomMapper1MappingImpl<*, *> }
+        .mapNotNull { (mapperId, mapper) ->
+            when (mapper) {
+                is MappingImplementation.CustomMapper1MappingImpl<*, *> ->
+                    Pair(mapper.sourceType, mapper.targetType) to Pair(mapper, mapperId)
+                else -> null
+            }
+        }
+        .toMap()
+
+    fun TypeSpec.Builder.generateMethod() {
+        val mappingId = mapMethodSourceType.mappingInto(mapMethodTargetType)
         val customMapping = descriptor.mappings[mappingId]
 
-        return FunSpec.builder("map")
-            .addModifiers(KModifier.OVERRIDE)
-            .addParameter(sourceParameterName, sourceClassType.asTypeName())
-            .addCode(
-                CodeBlock.builder()
-                    .apply {
-                        when (customMapping) {
-                            null -> targetClassType.addPrimaryConstructor()
-                            is Mapping.CustomFactoryMapping<*> -> customMapping.customFactory(mappingId)
-                            is Mapping.CustomMapperMapping<*> -> customMapping.customMapper(mappingId)
+        addFunction(
+            FunSpec.builder("map")
+                .addModifiers(KModifier.OVERRIDE)
+                .addParameter(sourceParameterName, mapMethodSourceType.asTypeName())
+                .addCode(
+                    CodeBlock.builder()
+                        .apply {
+                            when (customMapping) {
+                                null -> mapMethodTargetType.addPrimaryConstructor()
+                                is Mapping.CustomFactoryMapping<*> -> customMapping.customFactory(mappingId)
+                                is Mapping.CustomMapperMapping<*> -> customMapping.customMapper(mappingId)
+                            }
                         }
-                    }
-                    .build())
-            .returns(targetClassType.asTypeName())
-            .build()
+                        .build())
+                .returns(mapMethodTargetType.asTypeName())
+                .build()
+        )
     }
 
     context(CodeBlock.Builder)
     private fun Mapping.CustomMapperMapping<*>.customMapper(mappingId: String) {
-        add("return (")
-        add("%T.mappings.getValue(\"$mappingId\")", descriptorClass)
-
-        when (this) {
-            is MappingImplementation.CustomMapper1MappingImpl<*, *> -> add(
-                "as %T).mapper($sourceParameterName)", this::class.asClassName()
-                    .parameterizedBy(sourceClassType.asTypeName(), targetClassType.asTypeName())
-            )
-        }
+        add("return")
+        addGetMappingForCustomMapper(mappingId)
+        add(".$MAPPER_PROPERTY($sourceParameterName)")
     }
 
     context(CodeBlock.Builder)
     private fun Mapping.CustomFactoryMapping<*>.customFactory(mappingId: String) {
-        factory.validateCouldBePopulatedFrom(sourceClassType)
+        val nestedMappings = factory.findNestedMappings()
 
         val kFunction = "KFunction" + factory.parameters.size
         val kfunctionClassName = ClassName("kotlin.reflect", kFunction)
@@ -81,35 +90,82 @@ class KotStructGeneratorSession(
                 // last kfunction parameter is the return type
                 factory.parameters.map { it.type.asTypeName() } + factory.returnType.asTypeName()
             )
-        add("return ((%T.mappings.getValue(\"$mappingId\") as %T).factory as %T)(", descriptorClass, this::class, kfunctionClassName)
-        factory.addArguments(sourceParameterName)
+        add("return (")
+        addGetMappingForMappingId(mappingId)
+        add(".$FACTORY_PROPERTY as %T)(", kfunctionClassName)
+        factory.addArguments(nestedMappings)
         add(")")
     }
 
     context(CodeBlock.Builder)
     private fun KType.addPrimaryConstructor() {
-        primaryConstructor.validateCouldBePopulatedFrom(sourceClassType)
+        val nestedMappings = primaryConstructor.findNestedMappings()
 
         add("return %T(", asTypeName())
-        primaryConstructor.addArguments(sourceParameterName)
+        primaryConstructor.addArguments(nestedMappings)
         add(")")
     }
 
-    private fun KFunction<Any>.validateCouldBePopulatedFrom(sourceClassType: KType) {
-        val fromProperties = sourceClassType.jvmErasure.memberProperties.associate { it.name to it.returnType }
+    context(CodeBlock.Builder)
+    private fun Mapping<*>.addGetMappingForMappingId(mappingId: String) {
+        when (this) {
+            is MappingImplementation.CustomFactoryMappingImpl -> add(
+                "(%T.mappings.getValue(\"$mappingId\") as %T)",
+                descriptorClass,
+                this::class
+            )
+
+            is Mapping.CustomMapperMapping -> addGetMappingForCustomMapper(mappingId)
+        }
+    }
+
+    context(CodeBlock.Builder)
+    private fun Mapping.CustomMapperMapping<*>.addGetMappingForCustomMapper(mappingId: String) {
+        add("(%T.mappings.getValue(\"$mappingId\")", descriptorClass)
+
+        when (this) {
+            is MappingImplementation.CustomMapper1MappingImpl<*, *> -> add(
+                "as %T)", this::class.asClassName().parameterizedBy(
+                    sourceType.asTypeName(), targetType.asTypeName()
+                )
+            )
+        }
+    }
+
+    private fun KFunction<Any>.findNestedMappings(): Map<String, TypePair> = buildMap {
+        val fromProperties = mapMethodSourceType.jvmErasure.memberProperties.associate { it.name to it.returnType }
 
         val toArguments = parameters.associate { it.name!! to it.type }
 
         for ((name, toType) in toArguments) {
-            val fromType = requireNotNull(fromProperties[name]) { "Can't find matching property $name in $sourceClassType" }
+            val fromType = requireNotNull(fromProperties[name]) { "Can't find matching property $name in $mapMethodSourceType" }
 
-            require(fromType == toType) { "Source property $name type $fromType doesn't match target type $toType" }
+            if (fromType != toType) {
+                val typePair = TypePair(fromType, toType)
+                require(rootLevelMappers.containsKey(typePair)) {
+                    "Source property $name type $fromType doesn't match the target type $toType, also no custom mapper found"
+                }
+                put(name, typePair)
+            }
+        }
+    }
+
+    context(CodeBlock.Builder)
+    private fun KFunction<*>.addArguments(nestedMappings: Map<String, TypePair>) {
+        for (parameter in parameters) {
+            val pair = nestedMappings[parameter.name]?.let { rootLevelMappers.getValue(it) }
+            if (pair == null) {
+                add("$sourceParameterName.%N, ", parameter.name)
+            } else {
+                val (mapper, mappingId) = pair
+                mapper.addGetMappingForCustomMapper(mappingId)
+                add(".$MAPPER_PROPERTY($sourceParameterName.%N), ", parameter.name)
+            }
         }
     }
 }
 
-context(CodeBlock.Builder)
-private fun KFunction<*>.addArguments(parameterName: String) {
-    parameters.dropLast(1).forEach { add("$parameterName.%N, ", it.name) }
-    add("$parameterName.%N", parameters.last().name)
-}
+typealias TypePair = Pair<KType, KType>
+
+private val FACTORY_PROPERTY = Mapping.CustomFactoryMapping<*>::factory.name
+private val MAPPER_PROPERTY = Mapping.CustomMapperMapping<*>::mapper.name
