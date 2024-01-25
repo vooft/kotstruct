@@ -13,7 +13,7 @@ allprojects {
     }
 }
 
-subprojects {
+allprojects {
     apply(plugin = "org.jetbrains.kotlin.jvm")
     apply(plugin = "io.gitlab.arturbosch.detekt")
 
@@ -37,7 +37,7 @@ subprojects {
 
     tasks.withType<KotlinCompile> {
         kotlinOptions {
-            freeCompilerArgs = listOf("-Xjsr305=strict -Xmx1g")
+            freeCompilerArgs = listOf("-Xjsr305=strict", "-Xcontext-receivers")
             jvmTarget = "21"
         }
     }

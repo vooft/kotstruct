@@ -28,11 +28,11 @@ class HappyPathDataClassTargetOneToOneTest {
         "is not a data class and without backing fields" to RegularClassWithoutBackingFieldsMapper::class,
         "is not a data class with lateinit var fields" to RegularClassWithLateinitFieldsMapper::class,
     ) {
-        val compilation = KotlinCompilation().apply {
-            sources = listOf()
-            symbolProcessorProviders = listOf(KotStructMapperDslProcessorProvider(HappyPathDataClassTargetOneToOneTest::class))
-            inheritClassPath = true
-            messageOutputStream = System.out // see diagnostics in real time
+        val compilation = KotlinCompilation().also {
+            it.sources = listOf()
+            it.symbolProcessorProviders = listOf(KotStructMapperDslProcessorProvider(this::class))
+            it.inheritClassPath = true
+            it.messageOutputStream = System.out // see diagnostics in real time
         }
         val result = compilation.compile()
 
