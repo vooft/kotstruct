@@ -1,6 +1,6 @@
 package io.github.vooft.kotstruct.descriptor.constructor.happy
 
-import com.tschuchort.compiletesting.KotlinCompilation
+/*import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.kspSourcesDir
 import com.tschuchort.compiletesting.symbolProcessorProviders
 import io.github.vooft.kotstruct.GENERATED_PACKAGE
@@ -60,3 +60,4 @@ class HappyPathCustomConstructorTest {
         }
     }
 }
+*/

@@ -4,6 +4,8 @@ import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.KSPLogger
 import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.FileSpec
+import com.squareup.kotlinpoet.FunSpec
+import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.asTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
@@ -30,6 +32,7 @@ class KotStructGenerator(private val codeGenerator: CodeGenerator, private val l
                     .generateMemberFunctions(mapperClass)
                     .build()
             )
+            .addImport("kotlin.reflect", "typeOf")
             .build()
             .apply { writeTo(System.out) }
             .writeTo(codeGenerator, false)
@@ -37,10 +40,12 @@ class KotStructGenerator(private val codeGenerator: CodeGenerator, private val l
 
     private fun TypeSpec.Builder.generateMemberFunctions(mapperClass: KClass<out KotStructMapper>): TypeSpec.Builder {
         val memberFunctions = mapperClass.declaredMemberFunctions
-
-
         logger.info("Found at class $mapperClass methods: $memberFunctions")
+
         val descriptorClass = mapperClass.findAnnotation<KotStructDescribedBy>()?.descriptor
+        logger.info("Found descriptor $descriptorClass for mapper $mapperClass")
+
+        val descriptor = descriptorClass?.objectInstance ?: KotStructDescriptor.EMPTY
 
         for (memberFunction in memberFunctions) {
             when {
@@ -53,14 +58,31 @@ class KotStructGenerator(private val codeGenerator: CodeGenerator, private val l
                 memberFunction.parameters.isEmpty() ->
                     logger.info("Method ${memberFunction.name} doesn't accept any parameters, nothing to map from")
 
+                memberFunction.parameters.size > 2 ->
+                    logger.info("Method ${memberFunction.name} accepts more than 2 parameters (including self), ignoring")
+
                 else -> {
                     logger.info("Processing method $memberFunction")
-                    with(KotStructGeneratorSession(
-                        method = memberFunction,
-                        descriptorClass = descriptorClass ?: KotStructDescriptor.EMPTY_CLASS
-                    )) {
-                        generateMethod()
-                    }
+                    val parameter = memberFunction.parameters.last()
+
+                    val session = KotStructGeneratorSession(
+                        logger = logger,
+                        sourceClassType = parameter.type,
+                        targetClassType = memberFunction.returnType,
+                        descriptor = descriptor
+                    )
+
+                    val generatedType = session.generateMapperObject()
+                    addType(generatedType)
+
+                    addFunction(
+                        FunSpec.builder(memberFunction.name)
+                            .addModifiers(KModifier.OVERRIDE)
+                            .addParameter(parameter.name!!, parameter.type.asTypeName())
+                            .addCode("return %L(%L)", generatedType.name, parameter.name!!)
+                            .returns(memberFunction.returnType.asTypeName())
+                            .build()
+                    )
                 }
             }
         }

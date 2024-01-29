@@ -1,5 +1,6 @@
 package io.github.vooft.kotstruct.descriptor.mapper.happy
 
+
 import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.kspSourcesDir
 import com.tschuchort.compiletesting.symbolProcessorProviders
@@ -9,14 +10,13 @@ import io.github.vooft.kotstruct.KotStructDescribedBy
 import io.github.vooft.kotstruct.KotStructDescriptor
 import io.github.vooft.kotstruct.KotStructMapper
 import io.github.vooft.kotstruct.KotStructMapperDslProcessorProvider
-import io.github.vooft.kotstruct.Mapping
-import io.github.vooft.kotstruct.mappingInto
+import io.github.vooft.kotstruct.MappingsDefinitions
+import io.github.vooft.kotstruct.TypeMapping
 import io.kotest.matchers.paths.shouldExist
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import kotlin.io.path.Path
 import kotlin.io.path.readText
-import kotlin.reflect.typeOf
 
 class HappyPathCustomMapperTest {
     @Test
@@ -48,10 +48,12 @@ class HappyPathCustomMapperTest {
         }
 
         object MyMapperDescriptor : KotStructDescriptor {
-            override val mappings = mapOf(
-                typeOf<SourceDto>().mappingInto(typeOf<TargetDto>()) to
-                        Mapping.customMapper<SourceDto, TargetDto> { TargetDto(id = it.id, name = "default name") }
+            override val mappings = MappingsDefinitions(
+                typeMappings = listOf(TypeMapping.create<SourceDto, TargetDto> { TargetDto(id = it.id, name = "default name") }),
+                factoryMappings = emptyList(),
+                fieldMappings = emptyList(),
             )
         }
     }
 }
+

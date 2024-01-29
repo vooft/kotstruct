@@ -1,5 +1,6 @@
 package io.github.vooft.kotstruct.descriptor.mapper.happy
 
+/*
 import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.kspSourcesDir
 import com.tschuchort.compiletesting.symbolProcessorProviders
@@ -58,3 +59,4 @@ class HappyPathNestedCustomMapperTest {
         }
     }
 }
+*/

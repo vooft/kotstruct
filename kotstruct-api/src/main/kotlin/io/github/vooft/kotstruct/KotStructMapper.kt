@@ -5,28 +5,22 @@ import kotlin.reflect.KType
 
 interface KotStructMapper
 
-interface MappingTypes {
-    val source: List<KType>
-    val target: KType
-}
-
 interface KotStructDescriptor {
     // keep key as string to simplify codegen
-    val mappings: Map<String, Mapping<*>>
+    val mappings: MappingsDefinitions
 
     companion object {
         val EMPTY_CLASS: KClass<out KotStructDescriptor> = EmptyKotStructDescriptor::class
+        val EMPTY: KotStructDescriptor = EmptyKotStructDescriptor
     }
 }
-
-internal data class MappingTypesImpl(override val source: List<KType>, override val target: KType) : MappingTypes
 
 // keep key as string to simplify codegen
 //fun KType.mappingInto(target: KType): MappingTypes = MappingTypesImpl(listOf(this), target)
 fun KType.mappingInto(target: KType) = toString() + "____" + target.toString()
 
 internal object EmptyKotStructDescriptor : KotStructDescriptor {
-    override val mappings: Map<String, Mapping<*>> = mapOf()
+    override val mappings = MappingsDefinitions.EMPTY
 }
 
 @Target(AnnotationTarget.CLASS)
