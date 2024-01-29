@@ -77,7 +77,7 @@ class KotStructGeneratorSession(
                                 val factory = targetClassType.primaryConstructor
                                 for (parameter in factory.parameters) {
                                     val fromType = requireNotNull(fromProperties[parameter.name]) {
-                                        "Can't find matching property $${parameter.name} in $sourceClassType"
+                                        "Can't find matching property ${parameter.name} in $sourceClassType"
                                     }
 
                                     if (fromType == parameter.type) {

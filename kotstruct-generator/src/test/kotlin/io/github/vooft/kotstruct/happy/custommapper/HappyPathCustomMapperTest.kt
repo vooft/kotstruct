@@ -1,4 +1,4 @@
-package io.github.vooft.kotstruct.descriptor.happy.custommapper
+package io.github.vooft.kotstruct.happy.custommapper
 
 import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.kspSourcesDir
