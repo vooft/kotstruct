@@ -10,9 +10,12 @@ import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.asClassName
 import com.squareup.kotlinpoet.asTypeName
 import io.github.vooft.kotstruct.KotStructDescriptor
+import io.github.vooft.kotstruct.primaryConstructor
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
+import kotlin.reflect.full.memberProperties
+import kotlin.reflect.jvm.jvmErasure
 
 private val IDENTIFIER_COUNTER = AtomicInteger()
 
@@ -57,6 +60,37 @@ class KotStructGeneratorSession(
                         .addModifiers(KModifier.OPERATOR)
                         .addParameter(INPUT_PARAMETER, sourceClassType.asTypeName())
                         .addCode("return %L(input)", typeMapping.identifier)
+                        .returns(targetClassType.asTypeName())
+                        .build()
+                    )
+                } else {
+                    logger.info("No typeMapping found for $sourceClassType and $targetClassType")
+
+                    addFunction(FunSpec.builder("invoke")
+                        .addModifiers(KModifier.OPERATOR)
+                        .addParameter(INPUT_PARAMETER, sourceClassType.asTypeName())
+                        .addCode(CodeBlock.builder()
+                            .add("return %T(", targetClassType.asTypeName())
+                            .apply {
+                                val fromProperties = sourceClassType.jvmErasure.memberProperties.associate { it.name to it.returnType }
+
+                                val factory = targetClassType.primaryConstructor
+                                for (parameter in factory.parameters) {
+                                    val fromProperty = requireNotNull(fromProperties[parameter.name]) {
+                                        "Can't find matching property $${parameter.name} in $sourceClassType"
+                                    }
+
+                                    require(fromProperty == parameter.type) {
+                                        "Type mismatch for parameter ${parameter.name}: $fromProperty!= ${parameter.type}"
+                                    }
+
+                                    add("%L = %L.%L, ", parameter.name, INPUT_PARAMETER, parameter.name)
+                                }
+
+                                add(")")
+                            }
+                            .build()
+                        )
                         .returns(targetClassType.asTypeName())
                         .build()
                     )
