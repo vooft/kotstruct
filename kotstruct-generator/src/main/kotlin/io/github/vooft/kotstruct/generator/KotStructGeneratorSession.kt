@@ -76,15 +76,20 @@ class KotStructGeneratorSession(
 
                                 val factory = targetClassType.primaryConstructor
                                 for (parameter in factory.parameters) {
-                                    val fromProperty = requireNotNull(fromProperties[parameter.name]) {
+                                    val fromType = requireNotNull(fromProperties[parameter.name]) {
                                         "Can't find matching property $${parameter.name} in $sourceClassType"
                                     }
 
-                                    require(fromProperty == parameter.type) {
-                                        "Type mismatch for parameter ${parameter.name}: $fromProperty!= ${parameter.type}"
-                                    }
+                                    if (fromType == parameter.type) {
+                                        add("%L = %L.%L, ", parameter.name, INPUT_PARAMETER, parameter.name)
+                                    } else {
+                                        val mapper = requireNotNull(typeMappers[TypePair(fromType, parameter.type)]) {
+                                            "Type mismatch for parameter ${parameter.name}: $fromType != ${parameter.type} " +
+                                                    "and no type mapper found"
+                                        }
 
-                                    add("%L = %L.%L, ", parameter.name, INPUT_PARAMETER, parameter.name)
+                                        add("%L = %L(%L.%L), ", parameter.name, mapper.identifier, INPUT_PARAMETER, parameter.name)
+                                    }
                                 }
 
                                 add(")")
@@ -119,8 +124,8 @@ fun TypePair.toMapperTypeName() = Function1::class.asClassName()
     .parameterizedBy(from.asTypeName(), to.asTypeName())
 
 fun TypePair.initializerFrom(descriptorClass: KClass<out KotStructDescriptor>) = CodeBlock.builder()
-    .add("%T.mappings.typeMappings.single { ", descriptorClass)
-    .add("it.from == typeOf<%T>() && it.to == typeOf<%T>()", from.asTypeName(), to.asTypeName())
+    .add("%T.mappings.typeMappings.single·{ ", descriptorClass)
+    .add("it.from·==·typeOf<%T>()·&&·it.to·==·typeOf<%T>()", from.asTypeName(), to.asTypeName())
     .add("}.mapper as %T", toMapperTypeName())
     .build()
 data class TypeMapperDefinition(val identifier: String)

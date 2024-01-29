@@ -1,6 +1,5 @@
-package io.github.vooft.kotstruct.descriptor.mapper.happy
+package io.github.vooft.kotstruct.descriptor.happy.nestedcustom
 
-/*
 import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.kspSourcesDir
 import com.tschuchort.compiletesting.symbolProcessorProviders
@@ -10,15 +9,14 @@ import io.github.vooft.kotstruct.KotStructDescribedBy
 import io.github.vooft.kotstruct.KotStructDescriptor
 import io.github.vooft.kotstruct.KotStructMapper
 import io.github.vooft.kotstruct.KotStructMapperDslProcessorProvider
-import io.github.vooft.kotstruct.Mapping
-import io.github.vooft.kotstruct.mappingInto
+import io.github.vooft.kotstruct.MappingsDefinitions
+import io.github.vooft.kotstruct.TypeMapping
 import io.kotest.matchers.paths.shouldExist
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import java.util.UUID
 import kotlin.io.path.Path
 import kotlin.io.path.readText
-import kotlin.reflect.typeOf
 
 class HappyPathNestedCustomMapperTest {
     @Test
@@ -50,13 +48,15 @@ class HappyPathNestedCustomMapperTest {
         }
 
         object NestedCustomMapperMapperDescriptor : KotStructDescriptor {
-            override val mappings = mapOf(
-                typeOf<String>().mappingInto(typeOf<UUID>()) to
-                        Mapping.customMapper<String, UUID> { UUID.fromString(it) },
-                typeOf<UUID>().mappingInto(typeOf<String>()) to
-                        Mapping.customMapper<UUID, String> { it.toString() }
+            override val mappings = MappingsDefinitions(
+                typeMappings = listOf(
+                    TypeMapping.create<String, UUID> { UUID.fromString(it) },
+                    TypeMapping.create<UUID, String> { it.toString() },
+                ),
+                factoryMappings = emptyList(),
+                fieldMappings = emptyList()
             )
         }
     }
 }
-*/
+
