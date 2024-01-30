@@ -160,6 +160,7 @@ class KotStructGeneratorSession(
     private fun CodeBlock.Builder.generateFactoryArguments(factory: KFunction<Any>): CodeBlock.Builder {
         val fromProperties = sourceClassType.jvmErasure.memberProperties.associate { it.name to it.returnType }
         for (factoryParameter in factory.parameters) {
+            add("/* %L = */ ", factoryParameter.name)
             // try to find a property matching by name and type
             // should easily work for primary constructor
             // TODO: need custom factory?
@@ -201,8 +202,7 @@ class KotStructGeneratorSession(
                     val typeMapper = typeMappings[TypePair(fromType, factoryParameter.type)]
                     if (typeMapper != null) {
                         add(
-                            "%L = %L(%L.%L)",
-                            factoryParameter.name,
+                            "%L(%L.%L)",
                             typeMapper.identifier,
                             inputParameter.name,
                             factoryParameter.name
@@ -227,7 +227,7 @@ class KotStructGeneratorSession(
                         addType(subGenerator)
 
                         // invoke generated object
-                        add("%L = %L(", factoryParameter.name, subGenerator.name)
+                        add("%L(", subGenerator.name)
 
                         // pass all the existing parameters
                         for (currentParamPathItem in parentParameters) {
