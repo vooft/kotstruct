@@ -1,14 +1,12 @@
 package io.github.vooft.kotstruct.descriptor
 
+import io.github.vooft.kotstruct.FactoryMapping
 import io.github.vooft.kotstruct.KotStructDescribedBy
 import io.github.vooft.kotstruct.KotStructDescriptor
 import io.github.vooft.kotstruct.KotStructMapper
-import io.github.vooft.kotstruct.Mapping
-import io.github.vooft.kotstruct.descriptor.CustomConstructorMapper.SourceDto
+import io.github.vooft.kotstruct.MappingsDefinitions
 import io.github.vooft.kotstruct.descriptor.CustomConstructorMapper.TargetDto
-import io.github.vooft.kotstruct.mappingInto
 import java.util.UUID
-import kotlin.reflect.typeOf
 
 @KotStructDescribedBy(CustomConstructorMapperDescriptor::class)
 interface CustomConstructorMapper : KotStructMapper {
@@ -23,8 +21,12 @@ interface CustomConstructorMapper : KotStructMapper {
 }
 
 object CustomConstructorMapperDescriptor : KotStructDescriptor {
-    override val mappings = mapOf(
-        typeOf<SourceDto>().mappingInto(typeOf<TargetDto>()) to
-                Mapping.customFactory(TargetDto::myFactory))
+    override val mappings = MappingsDefinitions(
+        typeMappings = emptyList(),
+        factoryMappings = listOf(
+            FactoryMapping.create(TargetDto::myFactory)
+        ),
+        fieldMappings = emptyList()
+    )
     val DEFAULT_NAME = this::class.qualifiedName!!
 }
