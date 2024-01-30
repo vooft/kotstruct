@@ -172,10 +172,14 @@ class KotStructGeneratorSession(
 
             // generate field mapping
             // TODO: improve to allow not only full path
-            // TODO: allow combining field mappers and type mappers
             if (fieldMappings.containsKey(nestedPath)) {
                 val fieldMapping = fieldMappings.getValue(nestedPath)
                 buildString {
+                    val typeMapper = typeMappings[TypePair(fieldMapping.fromPath.last().returnType, factoryParameter.type)]
+                    if (typeMapper != null) {
+                        add("%L(", typeMapper.identifier)
+                    }
+
                     add("%L.", parentParameters.firstOrNull()?.name ?: inputParameter.name)
 
                     for ((index, property) in fieldMapping.fromPath.withIndex()) {
@@ -187,6 +191,10 @@ class KotStructGeneratorSession(
 
                             add(".")
                         }
+                    }
+
+                    if (typeMapper != null) {
+                        add(")")
                     }
                 }
             } else {

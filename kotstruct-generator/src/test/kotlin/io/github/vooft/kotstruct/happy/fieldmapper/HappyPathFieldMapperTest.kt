@@ -11,10 +11,12 @@ import io.github.vooft.kotstruct.KotStructDescriptor
 import io.github.vooft.kotstruct.KotStructMapper
 import io.github.vooft.kotstruct.KotStructMapperDslProcessorProvider
 import io.github.vooft.kotstruct.MappingsDefinitions
+import io.github.vooft.kotstruct.TypeMapping
 import io.github.vooft.kotstruct.happy.fieldmapper.HappyPathFieldMapperTest.Mappers.MyMapper
 import io.kotest.matchers.paths.shouldExist
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
+import java.util.UUID
 import kotlin.io.path.Path
 import kotlin.io.path.readText
 
@@ -40,10 +42,10 @@ class HappyPathFieldMapperTest {
     @Suppress("unused")
     class Mappers {
         data class SourceDto(val srcId: String, val nested: Nested) {
-            data class Nested(val srcName: String)
+            data class Nested(val srcUuid: String)
         }
         data class TargetDto(val id: String, val nested: Nested) {
-            data class Nested(val name: String)
+            data class Nested(val uuid: UUID)
         }
 
         @KotStructDescribedBy(MyMapperDescriptor::class)
@@ -53,11 +55,14 @@ class HappyPathFieldMapperTest {
 
         object MyMapperDescriptor : KotStructDescriptor {
             override val mappings = MappingsDefinitions(
+                typeMappings = listOf(
+                    TypeMapping.create<String, UUID> { UUID.fromString(it) }
+                ),
                 fieldMappings = listOf(
                     FieldMapping.create<SourceDto, TargetDto>(listOf(SourceDto::srcId), listOf(TargetDto::id)),
                     FieldMapping.create<SourceDto, TargetDto>(
-                        fromPath = listOf(SourceDto::nested, SourceDto.Nested::srcName),
-                        toPath = listOf(TargetDto::nested, TargetDto.Nested::name)
+                        fromPath = listOf(SourceDto::nested, SourceDto.Nested::srcUuid),
+                        toPath = listOf(TargetDto::nested, TargetDto.Nested::uuid)
                     )
                 )
             )

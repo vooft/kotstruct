@@ -10,14 +10,15 @@ class FieldMappingMapperTest {
     fun `should use field mapping`() {
         val mapper = KotStructGeneratedFieldMappingMapper()
 
+        val uuid = UUID.randomUUID()
         val from = FieldMappingMapper.SourceDto(
             srcId = UUID.randomUUID().toString(),
-            nested = FieldMappingMapper.SourceDto.Nested(srcName = UUID.randomUUID().toString())
+            nested = FieldMappingMapper.SourceDto.Nested(srcUuid = uuid.toString())
         )
 
         val actual = mapper.map(from)
 
         actual.id shouldBe from.srcId
-        actual.nested.name shouldBe from.nested.srcName
+        actual.nested.uuid shouldBe uuid
     }
 }
