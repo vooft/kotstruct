@@ -17,7 +17,7 @@ allprojects {
     apply(plugin = "org.jetbrains.kotlin.jvm")
     apply(plugin = "io.gitlab.arturbosch.detekt")
 
-    group = "io.github.vooft"
+    group = "io.github.kotstruct"
     version = "1.0-SNAPSHOT"
 
     detekt {
