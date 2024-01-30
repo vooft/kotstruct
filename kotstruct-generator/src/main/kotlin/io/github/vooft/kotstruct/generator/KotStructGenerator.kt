@@ -72,6 +72,7 @@ class KotStructGenerator(private val codeGenerator: CodeGenerator, private val l
                         descriptor = descriptor
                     )
 
+                    // TODO: group all generated types under a single object
                     val generatedType = session.generateMapperObject()
                     addType(generatedType)
 
@@ -89,4 +90,10 @@ class KotStructGenerator(private val codeGenerator: CodeGenerator, private val l
 
         return this
     }
+
+//    private fun generateMappersHolder(descriptor: KotStructDescriptor): TypeSpec {
+//        return TypeSpec.objectBuilder("GeneratedMappersHolder")
+//
+//            .build()
+//    }
 }

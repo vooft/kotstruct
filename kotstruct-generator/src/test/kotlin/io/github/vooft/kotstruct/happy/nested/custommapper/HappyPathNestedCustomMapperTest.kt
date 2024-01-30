@@ -1,4 +1,4 @@
-package io.github.vooft.kotstruct.happy.nestedcustom
+package io.github.vooft.kotstruct.happy.nested.custommapper
 
 import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.kspSourcesDir
@@ -59,4 +59,3 @@ class HappyPathNestedCustomMapperTest {
         }
     }
 }
-

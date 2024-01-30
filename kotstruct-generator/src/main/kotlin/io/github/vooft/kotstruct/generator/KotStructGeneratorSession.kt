@@ -4,20 +4,19 @@ import com.google.devtools.ksp.processing.KSPLogger
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
-import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
-import com.squareup.kotlinpoet.asClassName
 import com.squareup.kotlinpoet.asTypeName
+import io.github.vooft.kotstruct.IDENTIFIER_COUNTER
 import io.github.vooft.kotstruct.KotStructDescriptor
+import io.github.vooft.kotstruct.TypeMapperDefinition
+import io.github.vooft.kotstruct.TypePair
+import io.github.vooft.kotstruct.initializerFrom
 import io.github.vooft.kotstruct.primaryConstructor
-import java.util.concurrent.atomic.AtomicInteger
-import kotlin.reflect.KClass
+import io.github.vooft.kotstruct.toMapperTypeName
 import kotlin.reflect.KType
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.jvmErasure
-
-private val IDENTIFIER_COUNTER = AtomicInteger()
 
 class KotStructGeneratorSession(
     private val logger: KSPLogger,
@@ -28,6 +27,7 @@ class KotStructGeneratorSession(
 
     private val descriptorClass = descriptor::class
 
+    // TODO: move to parent object
     // make lazy to make sure that the counter is only incremented if needed
     private val typeMappers by lazy {
         descriptor.mappings.typeMappings.associate {
@@ -40,67 +40,10 @@ class KotStructGeneratorSession(
             .addModifiers(KModifier.PRIVATE)
 
             // add properties for type mappers
-            .apply {
-                for ((typePair, definition) in typeMappers) {
-                    addProperty(
-                        PropertySpec.builder(definition.identifier, typePair.toMapperTypeName())
-                            .addKdoc("%T -> %T", typePair.from.asTypeName(), typePair.to.asTypeName())
-                            .initializer(typePair.initializerFrom(descriptorClass))
-                            .build()
-                    )
-                }
-            }
+            .addTypeMappers()
 
             // add invoke operator
-            .apply {
-                val typeMapping = typeMappers[TypePair(sourceClassType, targetClassType)]
-                if (typeMapping != null) {
-                    logger.info("Found typeMapping for $sourceClassType and $targetClassType: $typeMapping")
-                    addFunction(FunSpec.builder("invoke")
-                        .addModifiers(KModifier.OPERATOR)
-                        .addParameter(INPUT_PARAMETER, sourceClassType.asTypeName())
-                        .addCode("return %L(input)", typeMapping.identifier)
-                        .returns(targetClassType.asTypeName())
-                        .build()
-                    )
-                } else {
-                    logger.info("No typeMapping found for $sourceClassType and $targetClassType")
-
-                    addFunction(FunSpec.builder("invoke")
-                        .addModifiers(KModifier.OPERATOR)
-                        .addParameter(INPUT_PARAMETER, sourceClassType.asTypeName())
-                        .addCode(CodeBlock.builder()
-                            .add("return %T(", targetClassType.asTypeName())
-                            .apply {
-                                val fromProperties = sourceClassType.jvmErasure.memberProperties.associate { it.name to it.returnType }
-
-                                val factory = targetClassType.primaryConstructor
-                                for (parameter in factory.parameters) {
-                                    val fromType = requireNotNull(fromProperties[parameter.name]) {
-                                        "Can't find matching property ${parameter.name} in $sourceClassType"
-                                    }
-
-                                    if (fromType == parameter.type) {
-                                        add("%L = %L.%L, ", parameter.name, INPUT_PARAMETER, parameter.name)
-                                    } else {
-                                        val mapper = requireNotNull(typeMappers[TypePair(fromType, parameter.type)]) {
-                                            "Type mismatch for parameter ${parameter.name}: $fromType != ${parameter.type} " +
-                                                    "and no type mapper found"
-                                        }
-
-                                        add("%L = %L(%L.%L), ", parameter.name, mapper.identifier, INPUT_PARAMETER, parameter.name)
-                                    }
-                                }
-
-                                add(")")
-                            }
-                            .build()
-                        )
-                        .returns(targetClassType.asTypeName())
-                        .build()
-                    )
-                }
-            }
+            .addInvokeMethod()
 
             .build()
 
@@ -116,18 +59,91 @@ class KotStructGeneratorSession(
 //        TypeSpec.objectBuilder("Generated${OBJECT_COUNTER.incrementAndGet()}")
 //            .
     }
+
+    private fun TypeSpec.Builder.addTypeMappers(): TypeSpec.Builder {
+        for ((typePair, definition) in typeMappers) {
+            addProperty(
+                PropertySpec.builder(definition.identifier, typePair.toMapperTypeName())
+                    .addKdoc("%T -> %T", typePair.from.asTypeName(), typePair.to.asTypeName())
+                    .initializer(typePair.initializerFrom(descriptorClass))
+                    .build()
+            )
+        }
+
+        return this
+    }
+
+    private fun TypeSpec.Builder.addInvokeMethod(): TypeSpec.Builder {
+        val typeMapping = typeMappers[TypePair(sourceClassType, targetClassType)]
+        if (typeMapping != null) {
+            // when direct type mapping is defined, just use it
+            logger.info("Found typeMapping for $sourceClassType and $targetClassType: $typeMapping")
+
+            addFunction(
+                FunSpec.builder("invoke")
+                    .addModifiers(KModifier.OPERATOR)
+                    .addParameter(INPUT_PARAMETER, sourceClassType.asTypeName())
+                    .addCode("return %L(input)", typeMapping.identifier)
+                    .returns(targetClassType.asTypeName())
+                    .build()
+            )
+        } else {
+            // generate custom mapper using constructor
+
+            logger.info("No typeMapping found for $sourceClassType and $targetClassType")
+
+            addFunction(
+                FunSpec.builder("invoke")
+                    .addModifiers(KModifier.OPERATOR)
+                    .addParameter(INPUT_PARAMETER, sourceClassType.asTypeName())
+                    .addCode(
+                        CodeBlock.builder()
+                            .add("return %T(", targetClassType.asTypeName())
+                            .apply {
+                                val fromProperties = sourceClassType.jvmErasure.memberProperties.associate { it.name to it.returnType }
+
+                                val factory = targetClassType.primaryConstructor
+                                for (parameter in factory.parameters) {
+                                    val fromType = requireNotNull(fromProperties[parameter.name]) {
+                                        "Can't find matching property ${parameter.name} in $sourceClassType"
+                                    }
+
+                                    if (fromType == parameter.type) {
+                                        add("%L = %L.%L, ", parameter.name, INPUT_PARAMETER, parameter.name)
+                                    } else {
+                                        val typeMapper = typeMappers[TypePair(fromType, parameter.type)]
+                                        if (typeMapper != null) {
+                                            add(
+                                                "%L = %L(%L.%L), ",
+                                                parameter.name,
+                                                typeMapper.identifier,
+                                                INPUT_PARAMETER,
+                                                parameter.name
+                                            )
+                                        } else {
+                                            val subGenerator = KotStructGeneratorSession(
+                                                logger = logger,
+                                                sourceClassType = fromType,
+                                                targetClassType = parameter.type,
+                                                descriptor = descriptor
+                                            ).generateMapperObject()
+
+                                            addType(subGenerator)
+                                            add("%L = %L(%L.%L), ", parameter.name, subGenerator.name, INPUT_PARAMETER, parameter.name)
+                                        }
+                                    }
+                                }
+
+                                add(")")
+                            }
+                            .build()
+                    )
+                    .returns(targetClassType.asTypeName())
+                    .build()
+            )
+        }
+        return this
+    }
 }
-
-data class TypePair(val from: KType, val to: KType)
-
-fun TypePair.toMapperTypeName() = Function1::class.asClassName()
-    .parameterizedBy(from.asTypeName(), to.asTypeName())
-
-fun TypePair.initializerFrom(descriptorClass: KClass<out KotStructDescriptor>) = CodeBlock.builder()
-    .add("%T.mappings.typeMappings.single·{ ", descriptorClass)
-    .add("it.from·==·typeOf<%T>()·&&·it.to·==·typeOf<%T>()", from.asTypeName(), to.asTypeName())
-    .add("}.mapper as %T", toMapperTypeName())
-    .build()
-data class TypeMapperDefinition(val identifier: String)
 
 private const val INPUT_PARAMETER = "input"
