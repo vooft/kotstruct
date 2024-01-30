@@ -1,4 +1,4 @@
-package io.github.vooft.kotstruct.simple.onetoone.happy
+package io.github.vooft.kotstruct.happy.onetoone
 
 import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.kspSourcesDir
@@ -8,10 +8,11 @@ import io.github.vooft.kotstruct.GENERATED_PREFIX
 import io.github.vooft.kotstruct.KotStructMapper
 import io.github.vooft.kotstruct.KotStructMapperDslProcessorProvider
 import io.github.vooft.kotstruct.dynamicTests
-import io.github.vooft.kotstruct.simple.onetoone.happy.HappyPathDataClassTargetOneToOneTest.Mappers.RegularClassWithLateinitFieldsMapper
-import io.github.vooft.kotstruct.simple.onetoone.happy.HappyPathDataClassTargetOneToOneTest.Mappers.RegularClassWithoutBackingFieldsMapper
-import io.github.vooft.kotstruct.simple.onetoone.happy.HappyPathDataClassTargetOneToOneTest.Mappers.SimpleDataClassMapper
-import io.github.vooft.kotstruct.simple.onetoone.happy.HappyPathDataClassTargetOneToOneTest.Mappers.SourceParameterNameDifferentMapper
+import io.github.vooft.kotstruct.happy.onetoone.HappyPathDataClassTargetOneToOneTest.Mappers.RegularClassCalculatedFieldsMapper
+import io.github.vooft.kotstruct.happy.onetoone.HappyPathDataClassTargetOneToOneTest.Mappers.RegularClassWithLateinitFieldsMapper
+import io.github.vooft.kotstruct.happy.onetoone.HappyPathDataClassTargetOneToOneTest.Mappers.RegularClassWithoutBackingFieldsMapper
+import io.github.vooft.kotstruct.happy.onetoone.HappyPathDataClassTargetOneToOneTest.Mappers.SimpleDataClassMapper
+import io.github.vooft.kotstruct.happy.onetoone.HappyPathDataClassTargetOneToOneTest.Mappers.SourceParameterNameDifferentMapper
 import io.kotest.matchers.paths.shouldExist
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.TestFactory
@@ -26,10 +27,10 @@ class HappyPathDataClassTargetOneToOneTest {
     fun `should generate when target is data class and source`() = dynamicTests(
         "argument is not named src" to SourceParameterNameDifferentMapper::class,
         "is a data class" to SimpleDataClassMapper::class,
-        "is not a data class with calculated fields" to Mappers.RegularClassCalculatedFieldsMapper::class,
+        "is not a data class with calculated fields" to RegularClassCalculatedFieldsMapper::class,
         "is not a data class and without backing fields" to RegularClassWithoutBackingFieldsMapper::class,
         "is not a data class with lateinit var fields" to RegularClassWithLateinitFieldsMapper::class,
-    ) {
+    ) { mapperClass ->
         val compilation = KotlinCompilation().also {
             it.sources = listOf()
             it.symbolProcessorProviders = listOf(KotStructMapperDslProcessorProvider(this::class))
@@ -40,7 +41,7 @@ class HappyPathDataClassTargetOneToOneTest {
 
         val generatedFile = compilation.kspSourcesDir.toPath().resolve("kotlin")
             .resolve(Path(".", *GENERATED_PACKAGE.split(".").toTypedArray()))
-            .resolve("$GENERATED_PREFIX${it.simpleName}.kt")
+            .resolve("$GENERATED_PREFIX${mapperClass.simpleName}.kt")
         generatedFile.shouldExist()
         println(generatedFile.readText())
 

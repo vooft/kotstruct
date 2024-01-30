@@ -1,4 +1,4 @@
-package io.github.vooft.kotstruct.descriptor.constructor.happy
+package io.github.vooft.kotstruct.happy.custommapper
 
 import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.kspSourcesDir
@@ -9,19 +9,17 @@ import io.github.vooft.kotstruct.KotStructDescribedBy
 import io.github.vooft.kotstruct.KotStructDescriptor
 import io.github.vooft.kotstruct.KotStructMapper
 import io.github.vooft.kotstruct.KotStructMapperDslProcessorProvider
-import io.github.vooft.kotstruct.Mapping
-import io.github.vooft.kotstruct.descriptor.constructor.happy.HappyPathCustomConstructorTest.Mappers.MyMapper
-import io.github.vooft.kotstruct.mappingInto
+import io.github.vooft.kotstruct.MappingsDefinitions
+import io.github.vooft.kotstruct.TypeMapping
 import io.kotest.matchers.paths.shouldExist
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import kotlin.io.path.Path
 import kotlin.io.path.readText
-import kotlin.reflect.typeOf
 
-class HappyPathCustomConstructorTest {
+class HappyPathCustomMapperTest {
     @Test
-    fun `should generate class using custom constructor`() {
+    fun `should generate class using custom mapper`() {
         val compilation = KotlinCompilation().also {
             it.sources = listOf()
             it.symbolProcessorProviders = listOf(KotStructMapperDslProcessorProvider(this::class))
@@ -33,7 +31,7 @@ class HappyPathCustomConstructorTest {
 
         val generatedFile = compilation.kspSourcesDir.toPath().resolve("kotlin")
             .resolve(Path(".", *GENERATED_PACKAGE.split(".").toTypedArray()))
-            .resolve("$GENERATED_PREFIX${MyMapper::class.simpleName}.kt")
+            .resolve("$GENERATED_PREFIX${Mappers.MyMapper::class.simpleName}.kt")
         generatedFile.shouldExist()
         println(generatedFile.readText())
     }
@@ -41,11 +39,7 @@ class HappyPathCustomConstructorTest {
     @Suppress("unused")
     class Mappers {
         data class SourceDto(val id: String)
-        data class TargetDto(val id: String, val name: String) {
-            companion object {
-                fun myFactory(id: String) = TargetDto(id = id, name = "this is a default name")
-            }
-        }
+        data class TargetDto(val id: String, val name: String)
 
         @KotStructDescribedBy(MyMapperDescriptor::class)
         interface MyMapper : KotStructMapper {
@@ -53,9 +47,10 @@ class HappyPathCustomConstructorTest {
         }
 
         object MyMapperDescriptor : KotStructDescriptor {
-            override val mappings = mapOf(
-                typeOf<SourceDto>().mappingInto(typeOf<TargetDto>()) to
-                    Mapping.customFactory(TargetDto::myFactory)
+            override val mappings = MappingsDefinitions(
+                typeMappings = listOf(
+                    TypeMapping.create<SourceDto, TargetDto> { TargetDto(id = it.id, name = "default name") }
+                )
             )
         }
     }

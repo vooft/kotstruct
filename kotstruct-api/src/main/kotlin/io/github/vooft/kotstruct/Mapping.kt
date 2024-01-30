@@ -1,40 +1,43 @@
 package io.github.vooft.kotstruct
 
 import kotlin.reflect.KFunction
+import kotlin.reflect.KProperty
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
-// definitions
-
-sealed interface Mapping<Target : Any> {
-    val targetType: KType
-
-    sealed interface CustomFactoryMapping<Target : Any> : Mapping<Target> {
-        val factory: KFunction<Target>
-    }
-
-    sealed interface CustomMapperMapping<Target : Any> : Mapping<Target> {
-        val mapper: Function<Target>
-    }
-
+data class TypeMapping<Source : Any, Target : Any>(val from: KType, val to: KType, val mapper: Function1<Source, Target>) {
     companion object {
-        inline fun <reified Target: Any> customFactory(factory: KFunction<Target>): CustomFactoryMapping<Target>
-            = MappingImplementation.CustomFactoryMappingImpl(typeOf<Target>(), factory)
-
-        inline fun <reified Source: Any, reified Target: Any> customMapper(noinline mapper: (Source) -> Target): CustomMapperMapping<Target>
-                = MappingImplementation.CustomMapper1MappingImpl(typeOf<Source>(), typeOf<Target>(), mapper)
+        inline fun <reified Source : Any, reified Target : Any> create(noinline mapper: Function1<Source, Target>) = TypeMapping(
+            from = typeOf<Source>(),
+            to = typeOf<Target>(),
+            mapper = mapper
+        )
     }
 }
 
-object MappingImplementation {
-    data class CustomFactoryMappingImpl<Target : Any>(
-        override val targetType: KType,
-        override val factory: KFunction<Target>
-    ) : Mapping.CustomFactoryMapping<Target>
+data class FieldMapping<Source : Any, Target : Any>(
+    val from: KType,
+    val to: KType,
+    val fromPath: List<KProperty<*>>,
+    val toPath: List<KProperty<*>>,
+    val mapper: Function1<Source, Target>
+)
 
-    data class CustomMapper1MappingImpl<Source: Any, Target : Any>(
-        val sourceType: KType,
-        override val targetType: KType,
-        override val mapper: (Source) -> Target
-    ) : Mapping.CustomMapperMapping<Target>
+data class FactoryMapping<Target : Any>(val to: KType, val factory: KFunction<Target>) {
+    companion object {
+        inline fun <reified Target : Any> create(factory: KFunction<Target>) = FactoryMapping(
+            to = typeOf<Target>(),
+            factory = factory
+        )
+    }
+}
+
+data class MappingsDefinitions(
+    val typeMappings: List<TypeMapping<*, *>> = emptyList(),
+    val factoryMappings: List<FactoryMapping<*>> = emptyList(),
+    val fieldMappings: List<FieldMapping<*, *>> = emptyList(),
+) {
+    companion object {
+        val EMPTY = MappingsDefinitions()
+    }
 }

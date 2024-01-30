@@ -1,171 +1,190 @@
 package io.github.vooft.kotstruct.generator
 
-import com.squareup.kotlinpoet.ClassName
+import com.google.devtools.ksp.processing.KSPLogger
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
-import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import com.squareup.kotlinpoet.PropertySpec
+import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.TypeSpec
-import com.squareup.kotlinpoet.asClassName
 import com.squareup.kotlinpoet.asTypeName
-import io.github.vooft.kotstruct.KotStructDescribedBy
+import io.github.vooft.kotstruct.FactoryMapping
+import io.github.vooft.kotstruct.FactoryMappingDefinition
+import io.github.vooft.kotstruct.IDENTIFIER_COUNTER
 import io.github.vooft.kotstruct.KotStructDescriptor
-import io.github.vooft.kotstruct.Mapping
-import io.github.vooft.kotstruct.MappingImplementation
-import io.github.vooft.kotstruct.mappingInto
+import io.github.vooft.kotstruct.MappingsDefinitions
+import io.github.vooft.kotstruct.TypeMapping
+import io.github.vooft.kotstruct.TypeMappingDefinition
+import io.github.vooft.kotstruct.TypePair
 import io.github.vooft.kotstruct.primaryConstructor
+import io.github.vooft.kotstruct.toFunctionTypeName
+import io.github.vooft.kotstruct.toTypeName
 import kotlin.reflect.KClass
-import kotlin.reflect.KFunction
 import kotlin.reflect.KType
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.jvmErasure
 
 class KotStructGeneratorSession(
-    private val method: KFunction<*>,
-    private val descriptorClass: KClass<out KotStructDescriptor>
+    private val logger: KSPLogger,
+    private val sourceClassType: KType,
+    private val targetClassType: KType,
+    private val descriptor: KotStructDescriptor
 ) {
-    private val sourceParameterName = requireNotNull(method.parameters.last().name) { "Parameter name can not be null" }
 
-    private val mapMethodSourceType = run {
-        // first argument is the receiver, second is actual argument
-        require(method.parameters.size == 2) { "Mapping method $method must have exactly 1 argument" }
-        method.parameters.last().type
-    }
+    private val descriptorClass = descriptor::class
 
-    private val descriptor = requireNotNull(descriptorClass.objectInstance) {
-        "@${KotStructDescribedBy::class.simpleName} must reference an object, but $descriptorClass is not"
-    }
-
-    private val mapMethodTargetType = method.returnType
-
-    private val rootLevelMappers = descriptor.mappings
-        .asSequence()
-        .filter { (_, mapper) -> mapper is MappingImplementation.CustomMapper1MappingImpl<*, *> }
-        .mapNotNull { (mapperId, mapper) ->
-            when (mapper) {
-                is MappingImplementation.CustomMapper1MappingImpl<*, *> ->
-                    Pair(mapper.sourceType, mapper.targetType) to Pair(mapper, mapperId)
-                else -> null
-            }
+    // TODO: move to parent object
+    // make lazy to make sure that the counter is only incremented if needed
+    private val typeMappings by lazy {
+        descriptor.mappings.typeMappings.associate {
+            TypePair(it.from, it.to) to TypeMappingDefinition("typeMapper${IDENTIFIER_COUNTER.incrementAndGet()}")
         }
-        .toMap()
+    }
 
-    fun TypeSpec.Builder.generateMethod() {
-        val mappingId = mapMethodSourceType.mappingInto(mapMethodTargetType)
-        val customMapping = descriptor.mappings[mappingId]
+    private val factoryMappings by lazy {
+        descriptor.mappings.factoryMappings.associate {
+            it.to to FactoryMappingDefinition("factoryMapper${IDENTIFIER_COUNTER.incrementAndGet()}", it.factory)
+        }
+    }
 
-        addFunction(
-            FunSpec.builder("map")
-                .addModifiers(KModifier.OVERRIDE)
-                .addParameter(sourceParameterName, mapMethodSourceType.asTypeName())
-                .addCode(
-                    CodeBlock.builder()
-                        .apply {
-                            when (customMapping) {
-                                null -> mapMethodTargetType.addPrimaryConstructor()
-                                is Mapping.CustomFactoryMapping<*> -> customMapping.customFactory(mappingId)
-                                is Mapping.CustomMapperMapping<*> -> customMapping.customMapper(mappingId)
+    fun generateMapperObject(): TypeSpec {
+        return TypeSpec.objectBuilder("GeneratedMapper${IDENTIFIER_COUNTER.incrementAndGet()}")
+            .addModifiers(KModifier.PRIVATE)
+
+            // add properties for type mappers
+            .addStaticMappers()
+
+            // add invoke operator
+            .addInvokeMethod()
+
+            .build()
+    }
+
+    private fun TypeSpec.Builder.addStaticMappers(): TypeSpec.Builder {
+        // type mappings
+        for ((typePair, definition) in typeMappings) {
+            addProperty(
+                PropertySpec.builder(definition.identifier, typePair.toFunctionTypeName())
+                    .addKdoc("%T -> %T", typePair.from.asTypeName(), typePair.to.asTypeName())
+                    .initializer(typePair.typeMappingInitializer(descriptorClass))
+                    .build()
+            )
+        }
+
+        // factory mappings
+        for ((type, definition) in factoryMappings) {
+            val factoryTypeName = definition.factory.toTypeName()
+            addProperty(
+                PropertySpec.builder(definition.identifier, factoryTypeName)
+                    .addKdoc("%T Factory", type.asTypeName())
+                    .initializer(type.factoryMappingInitializer(descriptorClass, factoryTypeName))
+                    .build()
+            )
+        }
+
+        return this
+    }
+
+    private fun TypeSpec.Builder.addInvokeMethod(): TypeSpec.Builder {
+        val typeMapping = typeMappings[TypePair(sourceClassType, targetClassType)]
+        if (typeMapping != null) {
+            // when direct type mapping is defined, just use it
+            logger.info("Found typeMapping for $sourceClassType and $targetClassType: $typeMapping")
+
+            addFunction(
+                FunSpec.builder("invoke")
+                    .addModifiers(KModifier.OPERATOR)
+                    .addParameter(INPUT_PARAMETER, sourceClassType.asTypeName())
+                    .addCode("return %L(input)", typeMapping.identifier)
+                    .returns(targetClassType.asTypeName())
+                    .build()
+            )
+        } else {
+            // generate custom mapper using constructor
+
+            logger.info("No typeMapping found for $sourceClassType and $targetClassType")
+
+            val factoryMapping = factoryMappings[targetClassType]
+            val factory = factoryMapping?.factory ?: targetClassType.primaryConstructor
+            addFunction(
+                FunSpec.builder("invoke")
+                    .addModifiers(KModifier.OPERATOR)
+                    .addParameter(INPUT_PARAMETER, sourceClassType.asTypeName())
+                    .addCode(
+                        CodeBlock.builder()
+                            .apply {
+                                if (factoryMapping != null) {
+                                    add("return %L(", factoryMapping.identifier)
+                                } else {
+                                    add("return %T(", targetClassType.asTypeName())
+                                }
                             }
-                        }
-                        .build())
-                .returns(mapMethodTargetType.asTypeName())
-                .build()
-        )
-    }
+                            .apply {
+                                val fromProperties = sourceClassType.jvmErasure.memberProperties.associate { it.name to it.returnType }
+                                for (parameter in factory.parameters) {
+                                    val fromType = requireNotNull(fromProperties[parameter.name]) {
+                                        "Can't find matching property ${parameter.name} in $sourceClassType"
+                                    }
 
-    context(CodeBlock.Builder)
-    private fun Mapping.CustomMapperMapping<*>.customMapper(mappingId: String) {
-        add("return")
-        addGetMappingForCustomMapper(mappingId)
-        add(".$MAPPER_PROPERTY($sourceParameterName)")
-    }
+                                    if (fromType == parameter.type) {
+                                        add("%L.%L, ", INPUT_PARAMETER, parameter.name)
+                                    } else {
+                                        val typeMapper = typeMappings[TypePair(fromType, parameter.type)]
+                                        if (typeMapper != null) {
+                                            add(
+                                                "%L = %L(%L.%L), ",
+                                                parameter.name,
+                                                typeMapper.identifier,
+                                                INPUT_PARAMETER,
+                                                parameter.name
+                                            )
+                                        } else {
+                                            val subGenerator = KotStructGeneratorSession(
+                                                logger = logger,
+                                                sourceClassType = fromType,
+                                                targetClassType = parameter.type,
+                                                descriptor = descriptor
+                                            ).generateMapperObject()
 
-    context(CodeBlock.Builder)
-    private fun Mapping.CustomFactoryMapping<*>.customFactory(mappingId: String) {
-        val nestedMappings = factory.findNestedMappings()
+                                            addType(subGenerator)
+                                            add("%L = %L(%L.%L), ", parameter.name, subGenerator.name, INPUT_PARAMETER, parameter.name)
+                                        }
+                                    }
+                                }
 
-        val kFunction = "KFunction" + factory.parameters.size
-        val kfunctionClassName = ClassName("kotlin.reflect", kFunction)
-            .parameterizedBy(
-                // last kfunction parameter is the return type
-                factory.parameters.map { it.type.asTypeName() } + factory.returnType.asTypeName()
-            )
-        add("return (")
-        addGetMappingForMappingId(mappingId)
-        add(".$FACTORY_PROPERTY as %T)(", kfunctionClassName)
-        factory.addArguments(nestedMappings)
-        add(")")
-    }
-
-    context(CodeBlock.Builder)
-    private fun KType.addPrimaryConstructor() {
-        val nestedMappings = primaryConstructor.findNestedMappings()
-
-        add("return %T(", asTypeName())
-        primaryConstructor.addArguments(nestedMappings)
-        add(")")
-    }
-
-    context(CodeBlock.Builder)
-    private fun Mapping<*>.addGetMappingForMappingId(mappingId: String) {
-        when (this) {
-            is MappingImplementation.CustomFactoryMappingImpl -> add(
-                "(%T.mappings.getValue(\"$mappingId\") as %T)",
-                descriptorClass,
-                this::class
-            )
-
-            is Mapping.CustomMapperMapping -> addGetMappingForCustomMapper(mappingId)
-        }
-    }
-
-    context(CodeBlock.Builder)
-    private fun Mapping.CustomMapperMapping<*>.addGetMappingForCustomMapper(mappingId: String) {
-        add("(%T.mappings.getValue(\"$mappingId\")", descriptorClass)
-
-        when (this) {
-            is MappingImplementation.CustomMapper1MappingImpl<*, *> -> add(
-                "as %T)", this::class.asClassName().parameterizedBy(
-                    sourceType.asTypeName(), targetType.asTypeName()
-                )
+                                add(")")
+                            }
+                            .build()
+                    )
+                    .returns(targetClassType.asTypeName())
+                    .build()
             )
         }
-    }
-
-    private fun KFunction<Any>.findNestedMappings(): Map<String, TypePair> = buildMap {
-        val fromProperties = mapMethodSourceType.jvmErasure.memberProperties.associate { it.name to it.returnType }
-
-        val toArguments = parameters.associate { it.name!! to it.type }
-
-        for ((name, toType) in toArguments) {
-            val fromType = requireNotNull(fromProperties[name]) { "Can't find matching property $name in $mapMethodSourceType" }
-
-            if (fromType != toType) {
-                val typePair = TypePair(fromType, toType)
-                require(rootLevelMappers.containsKey(typePair)) {
-                    "Source property $name type $fromType doesn't match the target type $toType, also no custom mapper found"
-                }
-                put(name, typePair)
-            }
-        }
-    }
-
-    context(CodeBlock.Builder)
-    private fun KFunction<*>.addArguments(nestedMappings: Map<String, TypePair>) {
-        for (parameter in parameters) {
-            val pair = nestedMappings[parameter.name]?.let { rootLevelMappers.getValue(it) }
-            if (pair == null) {
-                add("$sourceParameterName.%N, ", parameter.name)
-            } else {
-                val (mapper, mappingId) = pair
-                mapper.addGetMappingForCustomMapper(mappingId)
-                add(".$MAPPER_PROPERTY($sourceParameterName.%N), ", parameter.name)
-            }
-        }
+        return this
     }
 }
 
-typealias TypePair = Pair<KType, KType>
+private const val INPUT_PARAMETER = "input"
 
-private val FACTORY_PROPERTY = Mapping.CustomFactoryMapping<*>::factory.name
-private val MAPPER_PROPERTY = Mapping.CustomMapperMapping<*>::mapper.name
+private fun TypePair.typeMappingInitializer(
+    descriptorClass: KClass<out KotStructDescriptor>
+) = CodeBlock.builder()
+    .add("%T.$DESCRIPTOR_MAPPINGS_FIELD.$TYPE_MAPPINGS_FIELD.single·{ ", descriptorClass)
+    .add("it.from·==·typeOf<%T>()·&&·it.to·==·typeOf<%T>()", from.asTypeName(), to.asTypeName())
+    .add("}.$TYPE_MAPPING_MAPPER_FIELD as %T", toFunctionTypeName())
+    .build()
+
+private fun KType.factoryMappingInitializer(
+    descriptorClass: KClass<out KotStructDescriptor>,
+    factoryTypeName: TypeName
+) = CodeBlock.builder()
+    .add("%T.$DESCRIPTOR_MAPPINGS_FIELD.$FACTORY_MAPPINGS_FIELD.single·{ ", descriptorClass)
+    .add("it.to·==·typeOf<%T>()", asTypeName())
+    .add("}.$FACTORY_MAPPING_FACTORY_FIELD as %T", factoryTypeName)
+    .build()
+
+private val DESCRIPTOR_MAPPINGS_FIELD = KotStructDescriptor::mappings.name
+private val TYPE_MAPPINGS_FIELD = MappingsDefinitions::typeMappings.name
+private val FACTORY_MAPPINGS_FIELD = MappingsDefinitions::factoryMappings.name
+private val TYPE_MAPPING_MAPPER_FIELD = TypeMapping<*, *>::mapper.name
+private val FACTORY_MAPPING_FACTORY_FIELD = FactoryMapping<*>::factory.name

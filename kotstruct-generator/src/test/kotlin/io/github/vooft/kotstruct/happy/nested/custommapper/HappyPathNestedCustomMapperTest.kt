@@ -1,4 +1,4 @@
-package io.github.vooft.kotstruct.descriptor.mapper.happy
+package io.github.vooft.kotstruct.happy.nested.custommapper
 
 import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.kspSourcesDir
@@ -9,16 +9,16 @@ import io.github.vooft.kotstruct.KotStructDescribedBy
 import io.github.vooft.kotstruct.KotStructDescriptor
 import io.github.vooft.kotstruct.KotStructMapper
 import io.github.vooft.kotstruct.KotStructMapperDslProcessorProvider
-import io.github.vooft.kotstruct.Mapping
-import io.github.vooft.kotstruct.mappingInto
+import io.github.vooft.kotstruct.MappingsDefinitions
+import io.github.vooft.kotstruct.TypeMapping
 import io.kotest.matchers.paths.shouldExist
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
+import java.util.UUID
 import kotlin.io.path.Path
 import kotlin.io.path.readText
-import kotlin.reflect.typeOf
 
-class HappyPathCustomMapperTest {
+class HappyPathNestedCustomMapperTest {
     @Test
     fun `should generate class using custom mapper`() {
         val compilation = KotlinCompilation().also {
@@ -32,25 +32,27 @@ class HappyPathCustomMapperTest {
 
         val generatedFile = compilation.kspSourcesDir.toPath().resolve("kotlin")
             .resolve(Path(".", *GENERATED_PACKAGE.split(".").toTypedArray()))
-            .resolve("$GENERATED_PREFIX${Mappers.MyMapper::class.simpleName}.kt")
+            .resolve("$GENERATED_PREFIX${Mappers.NestedCustomMapperMapper::class.simpleName}.kt")
         generatedFile.shouldExist()
         println(generatedFile.readText())
     }
 
     @Suppress("unused")
     class Mappers {
-        data class SourceDto(val id: String)
-        data class TargetDto(val id: String, val name: String)
+        data class SourceDto(val id: String, val uuidToString: UUID, val stringToUUID: String)
+        data class TargetDto(val id: String, val uuidToString: String, val stringToUUID: UUID)
 
-        @KotStructDescribedBy(MyMapperDescriptor::class)
-        interface MyMapper : KotStructMapper {
+        @KotStructDescribedBy(NestedCustomMapperMapperDescriptor::class)
+        interface NestedCustomMapperMapper : KotStructMapper {
             fun map(src: SourceDto): TargetDto
         }
 
-        object MyMapperDescriptor : KotStructDescriptor {
-            override val mappings = mapOf(
-                typeOf<SourceDto>().mappingInto(typeOf<TargetDto>()) to
-                        Mapping.customMapper<SourceDto, TargetDto> { TargetDto(id = it.id, name = "default name") }
+        object NestedCustomMapperMapperDescriptor : KotStructDescriptor {
+            override val mappings = MappingsDefinitions(
+                typeMappings = listOf(
+                    TypeMapping.create<String, UUID> { UUID.fromString(it) },
+                    TypeMapping.create<UUID, String> { it.toString() },
+                )
             )
         }
     }
