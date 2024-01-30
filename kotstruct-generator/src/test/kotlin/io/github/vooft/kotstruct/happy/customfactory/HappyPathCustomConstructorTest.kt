@@ -1,23 +1,21 @@
 package io.github.vooft.kotstruct.happy.customfactory
 
-/*import com.tschuchort.compiletesting.KotlinCompilation
+import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.kspSourcesDir
 import com.tschuchort.compiletesting.symbolProcessorProviders
+import io.github.vooft.kotstruct.FactoryMapping
 import io.github.vooft.kotstruct.GENERATED_PACKAGE
 import io.github.vooft.kotstruct.GENERATED_PREFIX
 import io.github.vooft.kotstruct.KotStructDescribedBy
 import io.github.vooft.kotstruct.KotStructDescriptor
 import io.github.vooft.kotstruct.KotStructMapper
 import io.github.vooft.kotstruct.KotStructMapperDslProcessorProvider
-import io.github.vooft.kotstruct.Mapping
-import io.github.vooft.kotstruct.descriptor.constructor.happy.HappyPathCustomConstructorTest.Mappers.MyMapper
-import io.github.vooft.kotstruct.mappingInto
+import io.github.vooft.kotstruct.MappingsDefinitions
 import io.kotest.matchers.paths.shouldExist
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import kotlin.io.path.Path
 import kotlin.io.path.readText
-import kotlin.reflect.typeOf
 
 class HappyPathCustomConstructorTest {
     @Test
@@ -33,7 +31,7 @@ class HappyPathCustomConstructorTest {
 
         val generatedFile = compilation.kspSourcesDir.toPath().resolve("kotlin")
             .resolve(Path(".", *GENERATED_PACKAGE.split(".").toTypedArray()))
-            .resolve("$GENERATED_PREFIX${MyMapper::class.simpleName}.kt")
+            .resolve("$GENERATED_PREFIX${Mappers.MyMapper::class.simpleName}.kt")
         generatedFile.shouldExist()
         println(generatedFile.readText())
     }
@@ -53,11 +51,14 @@ class HappyPathCustomConstructorTest {
         }
 
         object MyMapperDescriptor : KotStructDescriptor {
-            override val mappings = mapOf(
-                typeOf<SourceDto>().mappingInto(typeOf<TargetDto>()) to
-                    Mapping.customFactory(TargetDto::myFactory)
+            override val mappings = MappingsDefinitions(
+                typeMappings = emptyList(),
+                factoryMappings = listOf(
+                    FactoryMapping.create(TargetDto::myFactory)
+                ),
+                fieldMappings = emptyList()
             )
         }
     }
 }
-*/
+

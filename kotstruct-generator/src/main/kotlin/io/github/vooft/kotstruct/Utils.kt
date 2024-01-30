@@ -1,6 +1,7 @@
 package io.github.vooft.kotstruct
 
-import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.ClassName
+import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.asClassName
 import com.squareup.kotlinpoet.asTypeName
@@ -37,12 +38,17 @@ internal val IDENTIFIER_COUNTER = AtomicInteger()
 
 internal data class TypePair(val from: KType, val to: KType)
 
-internal fun TypePair.toMapperTypeName() = Function1::class.asClassName()
+internal fun TypePair.toFunctionTypeName() = Function1::class.asClassName()
     .parameterizedBy(from.asTypeName(), to.asTypeName())
 
-internal fun TypePair.initializerFrom(descriptorClass: KClass<out KotStructDescriptor>) = CodeBlock.builder()
-    .add("%T.mappings.typeMappings.single·{ ", descriptorClass)
-    .add("it.from·==·typeOf<%T>()·&&·it.to·==·typeOf<%T>()", from.asTypeName(), to.asTypeName())
-    .add("}.mapper as %T", toMapperTypeName())
-    .build()
-internal data class TypeMapperDefinition(val identifier: String)
+internal data class TypeMappingDefinition(val identifier: String)
+internal data class FactoryMappingDefinition(val identifier: String, val factory: KFunction<Any>)
+
+internal fun KFunction<*>.toTypeName(): ParameterizedTypeName {
+    val kFunction = "KFunction" + parameters.size
+    return ClassName("kotlin.reflect", kFunction)
+        .parameterizedBy(
+            // last kfunction parameter is the return type
+            parameters.map { it.type.asTypeName() } + returnType.asTypeName()
+        )
+}

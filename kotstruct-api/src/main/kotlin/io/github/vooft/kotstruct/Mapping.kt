@@ -23,7 +23,14 @@ data class FieldMapping<Source : Any, Target : Any>(
     val mapper: Function1<Source, Target>
 )
 
-data class FactoryMapping<Target : Any>(val to: KType, val factory: KFunction<Target>)
+data class FactoryMapping<Target : Any>(val to: KType, val factory: KFunction<Target>) {
+    companion object {
+        inline fun <reified Target : Any> create(factory: KFunction<Target>) = FactoryMapping(
+            to = typeOf<Target>(),
+            factory = factory
+        )
+    }
+}
 
 data class MappingsDefinitions(
     val typeMappings: List<TypeMapping<*, *>>,
