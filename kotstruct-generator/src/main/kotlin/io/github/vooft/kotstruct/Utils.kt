@@ -13,10 +13,6 @@ import kotlin.reflect.KFunction
 import kotlin.reflect.KType
 import kotlin.reflect.full.primaryConstructor
 
-fun KClass<out KotStructMapper>.findKotStructMapperSupertype(): KType {
-    return supertypes.single { it.classifier == KotStructMapper::class }
-}
-
 val KClass<*>.packageName: String get() = qualifiedName!!.split(".").dropLast(1).joinToString(".")
 
 val KType.primaryConstructor: KFunction<Any> get() = requireNotNull((classifier as KClass<*>).primaryConstructor) {

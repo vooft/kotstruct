@@ -37,10 +37,6 @@ data class MappingsDefinitions(
     val factoryMappings: List<FactoryMapping<*>>,
     val fieldMappings: List<FieldMapping<*, *>>,
 ) {
-    fun findTypeMapping(source: KType, target: KType) = typeMappings.find { it.from == source && it.to == target }
-
-    fun findFactoryMapping(target: KType) = factoryMappings.find { it.to == target }
-
     companion object {
         val EMPTY = MappingsDefinitions(
             typeMappings = emptyList(),
