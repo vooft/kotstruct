@@ -69,7 +69,8 @@ class KotStructGenerator(private val codeGenerator: CodeGenerator, private val l
                         logger = logger,
                         sourceClassType = parameter.type,
                         targetClassType = memberFunction.returnType,
-                        descriptor = descriptor
+                        descriptor = descriptor,
+                        parentParameters = listOf()
                     )
 
                     // TODO: group all generated types under a single object
