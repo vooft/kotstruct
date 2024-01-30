@@ -20,8 +20,20 @@ data class FieldMapping<Source : Any, Target : Any>(
     val to: KType,
     val fromPath: List<KProperty<*>>,
     val toPath: List<KProperty<*>>,
-    val mapper: Function1<Source, Target>
-)
+    val mapper: Function1<Source, Target>?
+) {
+    init {
+        // TODO: validate fromPath and toPath
+    }
+    companion object {
+        inline fun <reified Source : Any, reified Target : Any> create(
+            fromPath: List<KProperty<*>>,
+            toPath: List<KProperty<*>>
+        ): FieldMapping<Source, Target> {
+            return FieldMapping(from = typeOf<Source>(), to = typeOf<Target>(), fromPath = fromPath, toPath = toPath, mapper = null)
+        }
+    }
+}
 
 data class FactoryMapping<Target : Any>(val to: KType, val factory: KFunction<Target>) {
     companion object {

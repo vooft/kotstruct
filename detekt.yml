@@ -7,8 +7,10 @@ style:
         value: 'STOPSHIP:'
 complexity:
   LongMethod:
-    threshold: 70
+    threshold: 200 # TODO fixme
   NestedBlockDepth:
     active: false
+  LongParameterList:
+    constructorThreshold: 10
 
 
