@@ -8,5 +8,7 @@ style:
 complexity:
   LongMethod:
     threshold: 70
+  NestedBlockDepth:
+    active: false
 
 

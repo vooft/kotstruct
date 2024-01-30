@@ -20,6 +20,7 @@ import io.github.vooft.kotstruct.primaryConstructor
 import io.github.vooft.kotstruct.toFunctionTypeName
 import io.github.vooft.kotstruct.toParametrizedTypeName
 import kotlin.reflect.KClass
+import kotlin.reflect.KFunction
 import kotlin.reflect.KType
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.jvmErasure
@@ -28,7 +29,9 @@ class KotStructGeneratorSession(
     private val logger: KSPLogger,
     private val sourceClassType: KType,
     private val targetClassType: KType,
-    private val descriptor: KotStructDescriptor
+    private val descriptor: KotStructDescriptor,
+    private val parentParameters: List<FunctionParameter>,
+    private val inputParameter: FunctionParameter = FunctionParameter(INPUT_PREFIX + parentParameters.size, sourceClassType)
 ) {
 
     private val descriptorClass = descriptor::class
@@ -101,8 +104,14 @@ class KotStructGeneratorSession(
             addFunction(
                 FunSpec.builder("invoke")
                     .addModifiers(KModifier.OPERATOR)
-                    .addParameter(INPUT_PARAMETER, sourceClassType.asTypeName())
-                    .addCode("return %L(input)", typeMapping.identifier)
+                    // add all parameters to simplify generation
+                    .apply {
+                        for (param in parentParameters) {
+                            addParameter(param)
+                        }
+                    }
+                    .addParameter(inputParameter)
+                    .addCode("return %L(%L)", typeMapping.identifier, inputParameter.name)
                     .returns(targetClassType.asTypeName())
                     .build()
             )
@@ -116,7 +125,13 @@ class KotStructGeneratorSession(
             addFunction(
                 FunSpec.builder("invoke")
                     .addModifiers(KModifier.OPERATOR)
-                    .addParameter(INPUT_PARAMETER, sourceClassType.asTypeName())
+                    // add all parameters to simplify generation
+                    .apply {
+                        for ((name, paramType) in parentParameters) {
+                            addParameter(name, paramType.asTypeName())
+                        }
+                    }
+                    .addParameter(inputParameter)
                     .addCode(
                         CodeBlock.builder()
                             .apply {
@@ -126,41 +141,7 @@ class KotStructGeneratorSession(
                                     add("return %T(", targetClassType.asTypeName())
                                 }
                             }
-                            .apply {
-                                val fromProperties = sourceClassType.jvmErasure.memberProperties.associate { it.name to it.returnType }
-                                for (parameter in factory.parameters) {
-                                    val fromType = requireNotNull(fromProperties[parameter.name]) {
-                                        "Can't find matching property ${parameter.name} in $sourceClassType"
-                                    }
-
-                                    if (fromType == parameter.type) {
-                                        add("%L.%L, ", INPUT_PARAMETER, parameter.name)
-                                    } else {
-                                        val typeMapper = typeMappings[TypePair(fromType, parameter.type)]
-                                        if (typeMapper != null) {
-                                            add(
-                                                "%L = %L(%L.%L), ",
-                                                parameter.name,
-                                                typeMapper.identifier,
-                                                INPUT_PARAMETER,
-                                                parameter.name
-                                            )
-                                        } else {
-                                            val subGenerator = KotStructGeneratorSession(
-                                                logger = logger,
-                                                sourceClassType = fromType,
-                                                targetClassType = parameter.type,
-                                                descriptor = descriptor
-                                            ).generateMapperObject()
-
-                                            addType(subGenerator)
-                                            add("%L = %L(%L.%L), ", parameter.name, subGenerator.name, INPUT_PARAMETER, parameter.name)
-                                        }
-                                    }
-                                }
-
-                                add(")")
-                            }
+                            .generateFactory(factory)
                             .build()
                     )
                     .returns(targetClassType.asTypeName())
@@ -169,9 +150,86 @@ class KotStructGeneratorSession(
         }
         return this
     }
+
+    context(TypeSpec.Builder)
+    private fun CodeBlock.Builder.generateFactory(factory: KFunction<Any>): CodeBlock.Builder {
+        val fromProperties = sourceClassType.jvmErasure.memberProperties.associate { it.name to it.returnType }
+        for (factoryParameter in factory.parameters) {
+            val fromType = requireNotNull(fromProperties[factoryParameter.name]) {
+                "Can't find matching property ${factoryParameter.name} in $sourceClassType"
+            }
+
+            if (fromType == factoryParameter.type) {
+                // can be mapped directly
+                add("%L.%L", inputParameter.name, factoryParameter.name)
+            } else {
+                // there is a type mapping defined
+                val typeMapper = typeMappings[TypePair(fromType, factoryParameter.type)]
+                if (typeMapper != null) {
+                    add(
+                        "%L = %L(%L.%L)",
+                        factoryParameter.name,
+                        typeMapper.identifier,
+                        inputParameter.name,
+                        factoryParameter.name
+                    )
+                } else {
+                    val nestedInputParameter = FunctionParameter(
+                        name = INPUT_PREFIX + (parentParameters.size + 1),
+                        type = fromType
+                    )
+                    // need to generate a custom mapper
+                    val subGenerator = KotStructGeneratorSession(
+                        logger = logger,
+                        sourceClassType = fromType,
+                        targetClassType = factoryParameter.type,
+                        descriptor = descriptor,
+                        parentParameters = parentParameters + inputParameter,
+                        inputParameter = nestedInputParameter
+                    ).generateMapperObject()
+
+                    // TODO: split code block and type spec
+                    addType(subGenerator)
+
+                    // invoke generated object
+                    add("%L = %L(", factoryParameter.name, subGenerator.name)
+
+                    // pass all the existing parameters
+                    for (currentParamPathItem in parentParameters) {
+                        add(
+                            "/* path parameter */ %L = %L, ",
+                            currentParamPathItem.name,
+                            currentParamPathItem.name
+                        )
+                    }
+
+                    // pass current parameter
+                    add("%L = %L, ", inputParameter.name, inputParameter.name)
+
+                    // pass nested parameter
+                    add(
+                        "%L = %L.%L)",
+                        nestedInputParameter.name,
+                        inputParameter.name,
+                        factoryParameter.name
+                    )
+                }
+            }
+
+            add(", ")
+        }
+
+        add(")")
+
+        return this
+    }
 }
 
-private const val INPUT_PARAMETER = "input"
+private const val INPUT_PREFIX = "input"
+
+data class FunctionParameter(val name: String, val type: KType)
+
+private fun FunSpec.Builder.addParameter(parameter: FunctionParameter) = addParameter(parameter.name, parameter.type.asTypeName())
 
 private fun TypeMappingDefinition.typeMappingInitializer(
     descriptorClass: KClass<out KotStructDescriptor>

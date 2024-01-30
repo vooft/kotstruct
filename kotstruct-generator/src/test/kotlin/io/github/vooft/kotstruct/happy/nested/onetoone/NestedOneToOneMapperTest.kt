@@ -40,10 +40,14 @@ class NestedOneToOneMapperTest {
     @Suppress("unused")
     class Mappers {
         data class SourceDto(val id: IdWrapper) {
-            data class IdWrapper(val id: String)
+            data class IdWrapper(val id: ValueWrapper) {
+                data class ValueWrapper(val value: String)
+            }
         }
         data class TargetDto(val id: IdWrapper) {
-            data class IdWrapper(val id: String)
+            data class IdWrapper(val id: ValueWrapper) {
+                data class ValueWrapper(val value: String)
+            }
         }
 
         @KotStructDescribedBy(MyMapperDescriptor::class)
@@ -61,3 +65,4 @@ class NestedOneToOneMapperTest {
         }
     }
 }
+
