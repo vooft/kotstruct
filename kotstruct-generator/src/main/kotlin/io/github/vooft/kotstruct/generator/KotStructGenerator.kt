@@ -90,10 +90,4 @@ class KotStructGenerator(private val codeGenerator: CodeGenerator, private val l
 
         return this
     }
-
-//    private fun generateMappersHolder(descriptor: KotStructDescriptor): TypeSpec {
-//        return TypeSpec.objectBuilder("GeneratedMappersHolder")
-//
-//            .build()
-//    }
 }

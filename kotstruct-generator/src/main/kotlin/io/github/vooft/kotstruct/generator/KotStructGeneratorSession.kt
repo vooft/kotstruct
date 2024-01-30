@@ -58,21 +58,10 @@ class KotStructGeneratorSession(
             .addInvokeMethod()
 
             .build()
-
-//        val factoryMapping = aggregatedMappings.findFactoryMapping(targetClassType)
-//        if (factoryMapping != null) {
-//            logger.info("Found factoryMapping for $targetClassType: $factoryMapping")
-//             TODO: do something
-//        }
-
-//        val factory = factoryMapping?.factory ?: targetClassType.primaryConstructor
-//        logger.info("Found factory for $targetClassType: $factory")
-//
-//        TypeSpec.objectBuilder("Generated${OBJECT_COUNTER.incrementAndGet()}")
-//            .
     }
 
     private fun TypeSpec.Builder.addStaticMappers(): TypeSpec.Builder {
+        // type mappings
         for ((typePair, definition) in typeMappings) {
             addProperty(
                 PropertySpec.builder(definition.identifier, typePair.toFunctionTypeName())
@@ -82,6 +71,7 @@ class KotStructGeneratorSession(
             )
         }
 
+        // factory mappings
         for ((type, definition) in factoryMappings) {
             val factoryTypeName = definition.factory.toTypeName()
             addProperty(
