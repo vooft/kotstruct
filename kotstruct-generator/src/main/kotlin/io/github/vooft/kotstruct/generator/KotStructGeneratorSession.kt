@@ -21,7 +21,9 @@ import io.github.vooft.kotstruct.toFunctionTypeName
 import io.github.vooft.kotstruct.toParametrizedTypeName
 import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
+import kotlin.reflect.KProperty
 import kotlin.reflect.KType
+import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.jvmErasure
 
@@ -31,7 +33,8 @@ class KotStructGeneratorSession(
     private val targetClassType: KType,
     private val descriptor: KotStructDescriptor,
     private val parentParameters: List<FunctionParameter>,
-    private val inputParameter: FunctionParameter = FunctionParameter(INPUT_PREFIX + parentParameters.size, sourceClassType)
+    private val inputParameter: FunctionParameter = FunctionParameter(INPUT_PREFIX + parentParameters.size, sourceClassType),
+    private val toParentPath: List<KProperty<*>>
 ) {
 
     private val descriptorClass = descriptor::class
@@ -57,6 +60,8 @@ class KotStructGeneratorSession(
             )
         }
     }
+
+    private val fieldMappings = descriptor.mappings.fieldMappings.associateBy { it.toPath }
 
     fun generateMapperObject(): TypeSpec {
         return TypeSpec.objectBuilder("GeneratedMapper${IDENTIFIER_COUNTER.incrementAndGet()}")
@@ -141,7 +146,7 @@ class KotStructGeneratorSession(
                                     add("return %T(", targetClassType.asTypeName())
                                 }
                             }
-                            .generateFactory(factory)
+                            .generateFactoryArguments(factory)
                             .build()
                     )
                     .returns(targetClassType.asTypeName())
@@ -152,67 +157,98 @@ class KotStructGeneratorSession(
     }
 
     context(TypeSpec.Builder)
-    private fun CodeBlock.Builder.generateFactory(factory: KFunction<Any>): CodeBlock.Builder {
+    private fun CodeBlock.Builder.generateFactoryArguments(factory: KFunction<Any>): CodeBlock.Builder {
         val fromProperties = sourceClassType.jvmErasure.memberProperties.associate { it.name to it.returnType }
         for (factoryParameter in factory.parameters) {
-            val fromType = requireNotNull(fromProperties[factoryParameter.name]) {
-                "Can't find matching property ${factoryParameter.name} in $sourceClassType"
+            // try to find a property matching by name and type
+            // should easily work for primary constructor
+            // TODO: need custom factory?
+            val definedProperty = targetClassType.jvmErasure.declaredMemberProperties.find {
+                it.name == factoryParameter.name && it.returnType == it.returnType
             }
 
-            if (fromType == factoryParameter.type) {
-                // can be mapped directly
-                add("%L.%L", inputParameter.name, factoryParameter.name)
+            val nestedPath = (toParentPath + definedProperty).filterNotNull()
+
+            // generate field mapping
+            // TODO: improve to allow not only full path
+            // TODO: allow combining field mappers and type mappers
+            if (fieldMappings.containsKey(nestedPath)) {
+                val fieldMapping = fieldMappings.getValue(nestedPath)
+                buildString {
+                    add("%L.", parentParameters.firstOrNull()?.name ?: inputParameter.name)
+
+                    for ((index, property) in fieldMapping.fromPath.withIndex()) {
+                        add(property.name)
+                        if (index < fieldMapping.fromPath.size - 1) {
+                            if (property.returnType.isMarkedNullable) {
+                                add("?")
+                            }
+
+                            add(".")
+                        }
+                    }
+                }
             } else {
-                // there is a type mapping defined
-                val typeMapper = typeMappings[TypePair(fromType, factoryParameter.type)]
-                if (typeMapper != null) {
-                    add(
-                        "%L = %L(%L.%L)",
-                        factoryParameter.name,
-                        typeMapper.identifier,
-                        inputParameter.name,
-                        factoryParameter.name
-                    )
+                val fromType = requireNotNull(fromProperties[factoryParameter.name]) {
+                    "Can't find matching property ${factoryParameter.name} in $sourceClassType"
+                }
+
+                if (fromType == factoryParameter.type) {
+                    // can be mapped directly
+                    add("%L.%L", inputParameter.name, factoryParameter.name)
                 } else {
-                    val nestedInputParameter = FunctionParameter(
-                        name = INPUT_PREFIX + (parentParameters.size + 1),
-                        type = fromType
-                    )
-                    // need to generate a custom mapper
-                    val subGenerator = KotStructGeneratorSession(
-                        logger = logger,
-                        sourceClassType = fromType,
-                        targetClassType = factoryParameter.type,
-                        descriptor = descriptor,
-                        parentParameters = parentParameters + inputParameter,
-                        inputParameter = nestedInputParameter
-                    ).generateMapperObject()
-
-                    // TODO: split code block and type spec
-                    addType(subGenerator)
-
-                    // invoke generated object
-                    add("%L = %L(", factoryParameter.name, subGenerator.name)
-
-                    // pass all the existing parameters
-                    for (currentParamPathItem in parentParameters) {
+                    // there is a type mapping defined
+                    val typeMapper = typeMappings[TypePair(fromType, factoryParameter.type)]
+                    if (typeMapper != null) {
                         add(
-                            "/* path parameter */ %L = %L, ",
-                            currentParamPathItem.name,
-                            currentParamPathItem.name
+                            "%L = %L(%L.%L)",
+                            factoryParameter.name,
+                            typeMapper.identifier,
+                            inputParameter.name,
+                            factoryParameter.name
+                        )
+                    } else {
+                        val nestedInputParameter = FunctionParameter(
+                            name = INPUT_PREFIX + (parentParameters.size + 1),
+                            type = fromType
+                        )
+                        // need to generate a custom mapper
+                        val subGenerator = KotStructGeneratorSession(
+                            logger = logger,
+                            sourceClassType = fromType,
+                            targetClassType = factoryParameter.type,
+                            descriptor = descriptor,
+                            parentParameters = parentParameters + inputParameter,
+                            inputParameter = nestedInputParameter,
+                            toParentPath = nestedPath
+                        ).generateMapperObject()
+
+                        // TODO: split code block and type spec
+                        addType(subGenerator)
+
+                        // invoke generated object
+                        add("%L = %L(", factoryParameter.name, subGenerator.name)
+
+                        // pass all the existing parameters
+                        for (currentParamPathItem in parentParameters) {
+                            add(
+                                "/* path parameter */ %L = %L, ",
+                                currentParamPathItem.name,
+                                currentParamPathItem.name
+                            )
+                        }
+
+                        // pass current parameter
+                        add("%L = %L, ", inputParameter.name, inputParameter.name)
+
+                        // pass nested parameter
+                        add(
+                            "%L = %L.%L)",
+                            nestedInputParameter.name,
+                            inputParameter.name,
+                            factoryParameter.name
                         )
                     }
-
-                    // pass current parameter
-                    add("%L = %L, ", inputParameter.name, inputParameter.name)
-
-                    // pass nested parameter
-                    add(
-                        "%L = %L.%L)",
-                        nestedInputParameter.name,
-                        inputParameter.name,
-                        factoryParameter.name
-                    )
                 }
             }
 
