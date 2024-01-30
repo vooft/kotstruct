@@ -22,11 +22,9 @@ interface CustomConstructorMapper : KotStructMapper {
 
 object CustomConstructorMapperDescriptor : KotStructDescriptor {
     override val mappings = MappingsDefinitions(
-        typeMappings = emptyList(),
         factoryMappings = listOf(
             FactoryMapping.create(TargetDto::myFactory)
-        ),
-        fieldMappings = emptyList()
+        )
     )
     val DEFAULT_NAME = this::class.qualifiedName!!
 }

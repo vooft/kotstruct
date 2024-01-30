@@ -56,9 +56,7 @@ class NestedOneToOneMapperTest {
                 typeMappings = listOf(
                     TypeMapping.create<String, UUID> { UUID.fromString(it) },
                     TypeMapping.create<UUID, String> { it.toString() },
-                ),
-                factoryMappings = emptyList(),
-                fieldMappings = emptyList()
+                )
             )
         }
     }

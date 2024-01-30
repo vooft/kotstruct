@@ -52,11 +52,9 @@ class HappyPathCustomConstructorTest {
 
         object MyMapperDescriptor : KotStructDescriptor {
             override val mappings = MappingsDefinitions(
-                typeMappings = emptyList(),
                 factoryMappings = listOf(
                     FactoryMapping.create(TargetDto::myFactory)
-                ),
-                fieldMappings = emptyList()
+                )
             )
         }
     }

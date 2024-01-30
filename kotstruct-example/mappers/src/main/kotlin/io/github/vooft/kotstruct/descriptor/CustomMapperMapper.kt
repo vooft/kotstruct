@@ -21,9 +21,7 @@ object CustomMapperMapperDescriptor : KotStructDescriptor {
     override val mappings = MappingsDefinitions(
         typeMappings = listOf(
             TypeMapping.create<SourceDto, TargetDto> { TargetDto(it.id, DEFAULT_NAME) }
-        ),
-        factoryMappings = emptyList(),
-        fieldMappings = emptyList()
+        )
     )
     val DEFAULT_NAME = this::class.qualifiedName!!
 }

@@ -48,9 +48,9 @@ class HappyPathCustomMapperTest {
 
         object MyMapperDescriptor : KotStructDescriptor {
             override val mappings = MappingsDefinitions(
-                typeMappings = listOf(TypeMapping.create<SourceDto, TargetDto> { TargetDto(id = it.id, name = "default name") }),
-                factoryMappings = emptyList(),
-                fieldMappings = emptyList(),
+                typeMappings = listOf(
+                    TypeMapping.create<SourceDto, TargetDto> { TargetDto(id = it.id, name = "default name") }
+                )
             )
         }
     }

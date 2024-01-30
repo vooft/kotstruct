@@ -32,16 +32,12 @@ data class FactoryMapping<Target : Any>(val to: KType, val factory: KFunction<Ta
     }
 }
 
-data class MappingsDefinitions(
-    val typeMappings: List<TypeMapping<*, *>>,
-    val factoryMappings: List<FactoryMapping<*>>,
-    val fieldMappings: List<FieldMapping<*, *>>,
+data class MappingsDefinitions constructor(
+    val typeMappings: List<TypeMapping<*, *>> = emptyList(),
+    val factoryMappings: List<FactoryMapping<*>> = emptyList(),
+    val fieldMappings: List<FieldMapping<*, *>> = emptyList(),
 ) {
     companion object {
-        val EMPTY = MappingsDefinitions(
-            typeMappings = emptyList(),
-            factoryMappings = emptyList(),
-            fieldMappings = emptyList(),
-        )
+        val EMPTY = MappingsDefinitions()
     }
 }
