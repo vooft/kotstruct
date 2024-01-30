@@ -176,14 +176,14 @@ private const val INPUT_PARAMETER = "input"
 private fun TypeMappingDefinition.typeMappingInitializer(
     descriptorClass: KClass<out KotStructDescriptor>
 ) = CodeBlock.builder()
-    .add("%T.$DESCRIPTOR_MAPPINGS_FIELD.$TYPE_MAPPINGS_FIELD.[%L]", descriptorClass, index)
+    .add("%T.$DESCRIPTOR_MAPPINGS_FIELD.$TYPE_MAPPINGS_FIELD[%L]", descriptorClass, index)
     .add(".$TYPE_MAPPING_MAPPER_FIELD as %T", toFunctionTypeName())
     .build()
 
 private fun FactoryMappingDefinition.factoryMappingInitializer(
     descriptorClass: KClass<out KotStructDescriptor>,
 ) = CodeBlock.builder()
-    .add("%T.$DESCRIPTOR_MAPPINGS_FIELD.$FACTORY_MAPPINGS_FIELD.[%L]", descriptorClass, index)
+    .add("%T.$DESCRIPTOR_MAPPINGS_FIELD.$FACTORY_MAPPINGS_FIELD[%L]", descriptorClass, index)
     .add(".$FACTORY_MAPPING_FACTORY_FIELD as %T", mapping.factory.toParametrizedTypeName())
     .build()
 
