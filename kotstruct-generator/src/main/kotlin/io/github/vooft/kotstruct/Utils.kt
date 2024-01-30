@@ -34,13 +34,13 @@ internal val IDENTIFIER_COUNTER = AtomicInteger()
 
 internal data class TypePair(val from: KType, val to: KType)
 
-internal fun TypePair.toFunctionTypeName() = Function1::class.asClassName()
-    .parameterizedBy(from.asTypeName(), to.asTypeName())
+internal fun TypeMappingDefinition.toFunctionTypeName() = Function1::class.asClassName()
+    .parameterizedBy(mapping.from.asTypeName(), mapping.to.asTypeName())
 
-internal data class TypeMappingDefinition(val identifier: String)
-internal data class FactoryMappingDefinition(val identifier: String, val factory: KFunction<Any>)
+internal data class TypeMappingDefinition(val index: Int, val identifier: String, val mapping: TypeMapping<*, *>)
+internal data class FactoryMappingDefinition(val index: Int, val identifier: String, val mapping: FactoryMapping<*>)
 
-internal fun KFunction<*>.toTypeName(): ParameterizedTypeName {
+internal fun KFunction<*>.toParametrizedTypeName(): ParameterizedTypeName {
     val kFunction = "KFunction" + parameters.size
     return ClassName("kotlin.reflect", kFunction)
         .parameterizedBy(
@@ -48,3 +48,11 @@ internal fun KFunction<*>.toTypeName(): ParameterizedTypeName {
             parameters.map { it.type.asTypeName() } + returnType.asTypeName()
         )
 }
+
+internal inline fun <T, K, V> Iterable<T>.associateIndexed(transform: (Int, T) -> Pair<K, V>) = buildMap<K, V> {
+    forEachIndexed { index, t ->
+        val pair = transform(index, t)
+        put(pair.first, pair.second)
+    }
+}
+

@@ -5,7 +5,6 @@ import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.PropertySpec
-import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.asTypeName
 import io.github.vooft.kotstruct.FactoryMapping
@@ -16,9 +15,10 @@ import io.github.vooft.kotstruct.MappingsDefinitions
 import io.github.vooft.kotstruct.TypeMapping
 import io.github.vooft.kotstruct.TypeMappingDefinition
 import io.github.vooft.kotstruct.TypePair
+import io.github.vooft.kotstruct.associateIndexed
 import io.github.vooft.kotstruct.primaryConstructor
 import io.github.vooft.kotstruct.toFunctionTypeName
-import io.github.vooft.kotstruct.toTypeName
+import io.github.vooft.kotstruct.toParametrizedTypeName
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
 import kotlin.reflect.full.memberProperties
@@ -36,14 +36,22 @@ class KotStructGeneratorSession(
     // TODO: move to parent object
     // make lazy to make sure that the counter is only incremented if needed
     private val typeMappings by lazy {
-        descriptor.mappings.typeMappings.associate {
-            TypePair(it.from, it.to) to TypeMappingDefinition("typeMapper${IDENTIFIER_COUNTER.incrementAndGet()}")
+        descriptor.mappings.typeMappings.associateIndexed { index, mapping ->
+            TypePair(from = mapping.from, to = mapping.to) to TypeMappingDefinition(
+                index = index,
+                identifier = "typeMapper${IDENTIFIER_COUNTER.incrementAndGet()}",
+                mapping = mapping
+            )
         }
     }
 
     private val factoryMappings by lazy {
-        descriptor.mappings.factoryMappings.associate {
-            it.to to FactoryMappingDefinition("factoryMapper${IDENTIFIER_COUNTER.incrementAndGet()}", it.factory)
+        descriptor.mappings.factoryMappings.associateIndexed { index, mapping ->
+            mapping.to to FactoryMappingDefinition(
+                index = index,
+                identifier = "factoryMapper${IDENTIFIER_COUNTER.incrementAndGet()}",
+                mapping = mapping
+            )
         }
     }
 
@@ -64,20 +72,19 @@ class KotStructGeneratorSession(
         // type mappings
         for ((typePair, definition) in typeMappings) {
             addProperty(
-                PropertySpec.builder(definition.identifier, typePair.toFunctionTypeName())
+                PropertySpec.builder(definition.identifier, definition.toFunctionTypeName())
                     .addKdoc("%T -> %T", typePair.from.asTypeName(), typePair.to.asTypeName())
-                    .initializer(typePair.typeMappingInitializer(descriptorClass))
+                    .initializer(definition.typeMappingInitializer(descriptorClass))
                     .build()
             )
         }
 
         // factory mappings
         for ((type, definition) in factoryMappings) {
-            val factoryTypeName = definition.factory.toTypeName()
             addProperty(
-                PropertySpec.builder(definition.identifier, factoryTypeName)
+                PropertySpec.builder(definition.identifier, definition.mapping.factory.toParametrizedTypeName())
                     .addKdoc("%T Factory", type.asTypeName())
-                    .initializer(type.factoryMappingInitializer(descriptorClass, factoryTypeName))
+                    .initializer(definition.factoryMappingInitializer(descriptorClass))
                     .build()
             )
         }
@@ -105,7 +112,7 @@ class KotStructGeneratorSession(
             logger.info("No typeMapping found for $sourceClassType and $targetClassType")
 
             val factoryMapping = factoryMappings[targetClassType]
-            val factory = factoryMapping?.factory ?: targetClassType.primaryConstructor
+            val factory = factoryMapping?.mapping?.factory ?: targetClassType.primaryConstructor
             addFunction(
                 FunSpec.builder("invoke")
                     .addModifiers(KModifier.OPERATOR)
@@ -166,21 +173,18 @@ class KotStructGeneratorSession(
 
 private const val INPUT_PARAMETER = "input"
 
-private fun TypePair.typeMappingInitializer(
+private fun TypeMappingDefinition.typeMappingInitializer(
     descriptorClass: KClass<out KotStructDescriptor>
 ) = CodeBlock.builder()
-    .add("%T.$DESCRIPTOR_MAPPINGS_FIELD.$TYPE_MAPPINGS_FIELD.single·{ ", descriptorClass)
-    .add("it.from·==·typeOf<%T>()·&&·it.to·==·typeOf<%T>()", from.asTypeName(), to.asTypeName())
-    .add("}.$TYPE_MAPPING_MAPPER_FIELD as %T", toFunctionTypeName())
+    .add("%T.$DESCRIPTOR_MAPPINGS_FIELD.$TYPE_MAPPINGS_FIELD[%L]", descriptorClass, index)
+    .add(".$TYPE_MAPPING_MAPPER_FIELD as %T", toFunctionTypeName())
     .build()
 
-private fun KType.factoryMappingInitializer(
+private fun FactoryMappingDefinition.factoryMappingInitializer(
     descriptorClass: KClass<out KotStructDescriptor>,
-    factoryTypeName: TypeName
 ) = CodeBlock.builder()
-    .add("%T.$DESCRIPTOR_MAPPINGS_FIELD.$FACTORY_MAPPINGS_FIELD.single·{ ", descriptorClass)
-    .add("it.to·==·typeOf<%T>()", asTypeName())
-    .add("}.$FACTORY_MAPPING_FACTORY_FIELD as %T", factoryTypeName)
+    .add("%T.$DESCRIPTOR_MAPPINGS_FIELD.$FACTORY_MAPPINGS_FIELD[%L]", descriptorClass, index)
+    .add(".$FACTORY_MAPPING_FACTORY_FIELD as %T", mapping.factory.toParametrizedTypeName())
     .build()
 
 private val DESCRIPTOR_MAPPINGS_FIELD = KotStructDescriptor::mappings.name
