@@ -57,20 +57,7 @@ class HappyPathFieldMapperTest {
                 map { SourceDto::srcId } into { TargetDto::id }
                 map { SourceDto::nested / SourceDto.Nested::srcUuid } into { TargetDto::nested / TargetDto.Nested::uuid }
             }
-        }) {
-//            override val mappings = MappingsDefinitions(
-//                typeMappings = listOf(
-//                    TypeMapping.create<String, UUID> { UUID.fromString(it) }
-//                ),
-//                fieldMappings = listOf(
-//                    FieldMapping.create<SourceDto, TargetDto>(listOf(SourceDto::srcId), listOf(TargetDto::id)),
-//                    FieldMapping.create<SourceDto, TargetDto>(
-//                        fromPath = listOf(SourceDto::nested, SourceDto.Nested::srcUuid),
-//                        toPath = listOf(TargetDto::nested, TargetDto.Nested::uuid)
-//                    )
-//                )
-//            )
-        }
+        })
     }
 }
 
