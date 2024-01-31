@@ -7,10 +7,9 @@ import io.github.kotstruct.GENERATED_PACKAGE
 import io.github.kotstruct.GENERATED_PREFIX
 import io.github.kotstruct.KotStructDescribedBy
 import io.github.kotstruct.KotStructDescriptor
+import io.github.kotstruct.KotStructDescriptor.Companion.kotStruct
 import io.github.kotstruct.KotStructMapper
 import io.github.kotstruct.KotStructMapperDslProcessorProvider
-import io.github.kotstruct.MappingsDefinitions
-import io.github.kotstruct.TypeMapping
 import io.kotest.matchers.paths.shouldExist
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
@@ -46,12 +45,8 @@ class HappyPathCustomMapperTest {
             fun map(src: SourceDto): TargetDto
         }
 
-        object MyMapperDescriptor : KotStructDescriptor {
-            override val mappings = MappingsDefinitions(
-                typeMappings = listOf(
-                    TypeMapping.create<SourceDto, TargetDto> { TargetDto(id = it.id, name = "default name") }
-                )
-            )
-        }
+        object MyMapperDescriptor : KotStructDescriptor by kotStruct({
+            mapperFor<SourceDto, TargetDto> { TargetDto(id = it.id, name = "default name") }
+        })
     }
 }

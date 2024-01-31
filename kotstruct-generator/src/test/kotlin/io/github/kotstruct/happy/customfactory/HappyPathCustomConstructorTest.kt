@@ -3,14 +3,13 @@ package io.github.kotstruct.happy.customfactory
 import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.kspSourcesDir
 import com.tschuchort.compiletesting.symbolProcessorProviders
-import io.github.kotstruct.FactoryMapping
 import io.github.kotstruct.GENERATED_PACKAGE
 import io.github.kotstruct.GENERATED_PREFIX
 import io.github.kotstruct.KotStructDescribedBy
 import io.github.kotstruct.KotStructDescriptor
+import io.github.kotstruct.KotStructDescriptor.Companion.kotStruct
 import io.github.kotstruct.KotStructMapper
 import io.github.kotstruct.KotStructMapperDslProcessorProvider
-import io.github.kotstruct.MappingsDefinitions
 import io.kotest.matchers.paths.shouldExist
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
@@ -50,13 +49,9 @@ class HappyPathCustomConstructorTest {
             fun map(src: SourceDto): TargetDto
         }
 
-        object MyMapperDescriptor : KotStructDescriptor {
-            override val mappings = MappingsDefinitions(
-                factoryMappings = listOf(
-                    FactoryMapping.create(TargetDto::myFactory)
-                )
-            )
-        }
+        object MyMapperDescriptor : KotStructDescriptor by kotStruct({
+            factoryFor { TargetDto::myFactory }
+        })
     }
 }
 

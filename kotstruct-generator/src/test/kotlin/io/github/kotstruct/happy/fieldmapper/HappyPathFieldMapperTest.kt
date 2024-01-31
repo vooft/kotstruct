@@ -3,15 +3,13 @@ package io.github.kotstruct.happy.fieldmapper
 import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.kspSourcesDir
 import com.tschuchort.compiletesting.symbolProcessorProviders
-import io.github.kotstruct.FieldMapping
 import io.github.kotstruct.GENERATED_PACKAGE
 import io.github.kotstruct.GENERATED_PREFIX
 import io.github.kotstruct.KotStructDescribedBy
 import io.github.kotstruct.KotStructDescriptor
+import io.github.kotstruct.KotStructDescriptor.Companion.kotStruct
 import io.github.kotstruct.KotStructMapper
 import io.github.kotstruct.KotStructMapperDslProcessorProvider
-import io.github.kotstruct.MappingsDefinitions
-import io.github.kotstruct.TypeMapping
 import io.github.kotstruct.happy.fieldmapper.HappyPathFieldMapperTest.Mappers.MyMapper
 import io.kotest.matchers.paths.shouldExist
 import io.kotest.matchers.shouldBe
@@ -53,20 +51,13 @@ class HappyPathFieldMapperTest {
             fun map(src: SourceDto): TargetDto
         }
 
-        object MyMapperDescriptor : KotStructDescriptor {
-            override val mappings = MappingsDefinitions(
-                typeMappings = listOf(
-                    TypeMapping.create<String, UUID> { UUID.fromString(it) }
-                ),
-                fieldMappings = listOf(
-                    FieldMapping.create<SourceDto, TargetDto>(listOf(SourceDto::srcId), listOf(TargetDto::id)),
-                    FieldMapping.create<SourceDto, TargetDto>(
-                        fromPath = listOf(SourceDto::nested, SourceDto.Nested::srcUuid),
-                        toPath = listOf(TargetDto::nested, TargetDto.Nested::uuid)
-                    )
-                )
-            )
-        }
+        object MyMapperDescriptor : KotStructDescriptor by kotStruct({
+            mapperFor<String, UUID> { UUID.fromString(it) }
+            mappingFor<SourceDto, TargetDto> {
+                map { SourceDto::srcId } into { TargetDto::id }
+                map { SourceDto::nested / SourceDto.Nested::srcUuid } into { TargetDto::nested / TargetDto.Nested::uuid }
+            }
+        })
     }
 }
 

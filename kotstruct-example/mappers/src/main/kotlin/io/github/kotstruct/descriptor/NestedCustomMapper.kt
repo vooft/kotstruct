@@ -2,9 +2,8 @@ package io.github.kotstruct.descriptor
 
 import io.github.kotstruct.KotStructDescribedBy
 import io.github.kotstruct.KotStructDescriptor
+import io.github.kotstruct.KotStructDescriptor.Companion.kotStruct
 import io.github.kotstruct.KotStructMapper
-import io.github.kotstruct.MappingsDefinitions
-import io.github.kotstruct.TypeMapping
 import java.util.UUID
 
 @KotStructDescribedBy(NestedCustomMapperMapperDescriptor::class)
@@ -15,11 +14,7 @@ interface NestedCustomMapperMapper : KotStructMapper {
     data class TargetDto(val id: UUID, val uuidToString: String, val stringToUUID: UUID)
 }
 
-object NestedCustomMapperMapperDescriptor : KotStructDescriptor {
-    override val mappings = MappingsDefinitions(
-        typeMappings = listOf(
-            TypeMapping.create<String, UUID> { UUID.fromString(it) },
-            TypeMapping.create<UUID, String> { it.toString() }
-        )
-    )
-}
+object NestedCustomMapperMapperDescriptor : KotStructDescriptor by kotStruct({
+    mapperFor<String, UUID> { UUID.fromString(it) }
+    mapperFor<UUID, String> { it.toString() }
+})
