@@ -5,6 +5,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.detekt)
+    `maven-publish`
 }
 
 allprojects {
@@ -16,6 +17,7 @@ allprojects {
 allprojects {
     apply(plugin = "org.jetbrains.kotlin.jvm")
     apply(plugin = "io.gitlab.arturbosch.detekt")
+    apply(plugin = "org.gradle.maven-publish")
 
     group = "io.github.kotstruct"
     version = "1.0-SNAPSHOT"
@@ -43,3 +45,28 @@ allprojects {
     }
 }
 
+
+publishing {
+    listOf(project(":kotstruct-api"), project(":kotstruct-generator")).forEach { sub ->
+        publications {
+            create<MavenPublication>("${sub.name}-maven") {
+                groupId = sub.group.toString()
+                artifactId = sub.name
+                from(sub.components["java"])
+            }
+        }
+    }
+
+
+    repositories {
+        mavenLocal()
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/" + System.getenv("GITHUB_REPOSITORY"))
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
+}
