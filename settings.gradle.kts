@@ -2,6 +2,6 @@ rootProject.name = "kotstruct"
 
 include("kotstruct-api")
 include("kotstruct-generator")
-include("kotstruct-example")
-include("kotstruct-example:mappers")
-include("kotstruct-example:usage")
+include("kotstruct-test")
+include("kotstruct-test:mappers")
+include("kotstruct-test:usage")

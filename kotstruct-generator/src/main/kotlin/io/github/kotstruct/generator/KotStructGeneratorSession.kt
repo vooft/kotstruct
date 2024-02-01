@@ -4,11 +4,15 @@ import com.google.devtools.ksp.processing.KSPLogger
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
+import com.squareup.kotlinpoet.LambdaTypeName
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.asTypeName
 import io.github.kotstruct.FactoryMapping
 import io.github.kotstruct.FactoryMappingDefinition
+import io.github.kotstruct.FactoryToFieldMapping
+import io.github.kotstruct.FactoryToFieldMappingDefinition
+import io.github.kotstruct.FieldToFieldMapping
 import io.github.kotstruct.IDENTIFIER_COUNTER
 import io.github.kotstruct.KotStructDescriptor
 import io.github.kotstruct.MappingsDefinitions
@@ -26,7 +30,9 @@ import kotlin.reflect.KType
 import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.jvmErasure
+import kotlin.reflect.typeOf
 
+// TODO: split model creation and code generation
 class KotStructGeneratorSession(
     private val logger: KSPLogger,
     private val sourceClassType: KType,
@@ -62,6 +68,17 @@ class KotStructGeneratorSession(
     }
 
     private val fieldMappings = descriptor.mappings.fieldMappings.associateBy { it.toPath }
+    private val factoryToFieldMappings = descriptor.mappings.fieldMappings.withIndex()
+        .mapNotNull { (index, mapping) ->
+            (mapping as? FactoryToFieldMapping<*>)?.let { index to it }
+        }
+        .associate { (index, mapping) ->
+            mapping.toPath to FactoryToFieldMappingDefinition(
+                index = index,
+                identifier = "factoryToFieldMapper${IDENTIFIER_COUNTER.incrementAndGet()}",
+                mapping = mapping
+            )
+        }
 
     fun generateMapperObject(): TypeSpec {
         return TypeSpec.objectBuilder("GeneratedMapper${IDENTIFIER_COUNTER.incrementAndGet()}")
@@ -92,6 +109,15 @@ class KotStructGeneratorSession(
             addProperty(
                 PropertySpec.builder(definition.identifier, definition.mapping.factory.toParametrizedTypeName())
                     .addKdoc("%T Factory", type.asTypeName())
+                    .initializer(definition.factoryMappingInitializer(descriptorClass))
+                    .build()
+            )
+        }
+
+        for ((path, definition) in factoryToFieldMappings) {
+            addProperty(
+                PropertySpec.builder(definition.identifier, LambdaTypeName.get(returnType = definition.mapping.returnType.asTypeName()))
+                    .addKdoc("%L Factory", path.toString())
                     .initializer(definition.factoryMappingInitializer(descriptorClass))
                     .build()
             )
@@ -173,29 +199,49 @@ class KotStructGeneratorSession(
             // generate field mapping
             // TODO: improve to allow not only full path
             if (fieldMappings.containsKey(nestedPath)) {
+                // if field mapping is defined for the currently processed parameter
                 val fieldMapping = fieldMappings.getValue(nestedPath)
                 buildString {
-                    val typeMapper = typeMappings[TypePair(fieldMapping.fromPath.last().returnType, factoryParameter.type)]
-                    if (typeMapper != null) {
-                        add("%L(", typeMapper.identifier)
-                    }
-
-                    add("%L.", parentParameters.firstOrNull()?.name ?: inputParameter.name)
-
-                    for ((index, property) in fieldMapping.fromPath.withIndex()) {
-                        add(property.name)
-                        if (index < fieldMapping.fromPath.size - 1) {
-                            if (property.returnType.isMarkedNullable) {
-                                add("?")
+                    when (fieldMapping) {
+                        is FactoryToFieldMapping -> {
+                            val typeMapper = typeMappings[TypePair(fieldMapping.returnType, factoryParameter.type)]
+                            if (typeMapper != null) {
+                                add("%L(", typeMapper.identifier)
                             }
 
-                            add(".")
+                            val descriptor = factoryToFieldMappings.getValue(fieldMapping.toPath)
+                            add("%L()", descriptor.identifier)
+
+                            if (typeMapper != null) {
+                                add(")")
+                            }
+                        }
+
+                        is FieldToFieldMapping -> {
+                            val typeMapper = typeMappings[TypePair(fieldMapping.fromPath.last().returnType, factoryParameter.type)]
+                            if (typeMapper != null) {
+                                add("%L(", typeMapper.identifier)
+                            }
+
+                            add("%L.", parentParameters.firstOrNull()?.name ?: inputParameter.name)
+
+                            for ((index, property) in fieldMapping.fromPath.withIndex()) {
+                                add(property.name)
+                                if (index < fieldMapping.fromPath.size - 1) {
+                                    if (property.returnType.isMarkedNullable) {
+                                        add("?")
+                                    }
+
+                                    add(".")
+                                }
+                            }
+
+                            if (typeMapper != null) {
+                                add(")")
+                            }
                         }
                     }
 
-                    if (typeMapper != null) {
-                        add(")")
-                    }
                 }
             } else {
                 val fromType = requireNotNull(fromProperties[factoryParameter.name]) {
@@ -289,8 +335,22 @@ private fun FactoryMappingDefinition.factoryMappingInitializer(
     .add(".$FACTORY_MAPPING_FACTORY_FIELD as %T", mapping.factory.toParametrizedTypeName())
     .build()
 
+private fun FactoryToFieldMappingDefinition.factoryMappingInitializer(
+    descriptorClass: KClass<out KotStructDescriptor>
+) = CodeBlock.builder()
+    .add(
+        "(%T.$DESCRIPTOR_MAPPINGS_FIELD.$FIELD_MAPPINGS_FIELD[%L] as %T)",
+        descriptorClass,
+        index,
+        typeOf<FactoryToFieldMapping<*>>().asTypeName()
+    )
+    .add(".$FIELD_MAPPING_FACTORY_FIELD as () -> %T", mapping.returnType.asTypeName())
+    .build()
+
 private val DESCRIPTOR_MAPPINGS_FIELD = KotStructDescriptor::mappings.name
 private val TYPE_MAPPINGS_FIELD = MappingsDefinitions::typeMappings.name
 private val FACTORY_MAPPINGS_FIELD = MappingsDefinitions::factoryMappings.name
+private val FIELD_MAPPINGS_FIELD = MappingsDefinitions::fieldMappings.name
 private val TYPE_MAPPING_MAPPER_FIELD = TypeMapping<*, *>::mapper.name
 private val FACTORY_MAPPING_FACTORY_FIELD = FactoryMapping<*>::factory.name
+private val FIELD_MAPPING_FACTORY_FIELD = FactoryMapping<*>::factory.name

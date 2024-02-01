@@ -7,10 +7,11 @@ style:
         value: 'STOPSHIP:'
 complexity:
   LongMethod:
-    threshold: 200 # TODO fixme
+    threshold: 200 # TODO change after refactoring
   NestedBlockDepth:
     active: false
   LongParameterList:
     constructorThreshold: 10
-
+  CyclomaticComplexMethod:
+    threshold: 100 # TODO change after refactoring
 

@@ -39,6 +39,7 @@ internal fun TypeMappingDefinition.toFunctionTypeName() = Function1::class.asCla
 
 internal data class TypeMappingDefinition(val index: Int, val identifier: String, val mapping: TypeMapping<*, *>)
 internal data class FactoryMappingDefinition(val index: Int, val identifier: String, val mapping: FactoryMapping<*>)
+internal data class FactoryToFieldMappingDefinition(val index: Int, val identifier: String, val mapping: FactoryToFieldMapping<*>)
 
 internal fun KFunction<*>.toParametrizedTypeName(): ParameterizedTypeName {
     val kFunction = "KFunction" + parameters.size

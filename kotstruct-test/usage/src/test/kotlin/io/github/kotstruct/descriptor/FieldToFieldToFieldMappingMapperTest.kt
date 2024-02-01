@@ -1,27 +1,27 @@
 package io.github.kotstruct.descriptor
 
-import io.github.kotstruct.KotStructGeneratedFieldMappingMapper
+import io.github.kotstruct.KotStructGeneratedFieldToFieldMappingMapper
 import io.kotest.matchers.equality.shouldBeEqualToComparingFields
 import org.junit.jupiter.api.Test
 import java.util.UUID
 
-class FieldMappingMapperTest {
+class FieldToFieldToFieldMappingMapperTest {
     @Test
     fun `should use field mapping`() {
-        val mapper = KotStructGeneratedFieldMappingMapper()
+        val mapper = KotStructGeneratedFieldToFieldMappingMapper()
 
-        val from = FieldMappingMapper.SourceDto(
+        val from = FieldToFieldMappingMapper.SourceDto(
             srcId = UUID.randomUUID().toString(),
-            nested = FieldMappingMapper.SourceDto.Nested(
+            nested = FieldToFieldMappingMapper.SourceDto.Nested(
                 srcUuid = UUID.randomUUID().toString(),
                 toParent = UUID.randomUUID().toString()
             ),
             toChild = UUID.randomUUID().toString()
         )
 
-        val expected = FieldMappingMapper.TargetDto(
+        val expected = FieldToFieldMappingMapper.TargetDto(
             id = from.srcId,
-            nested = FieldMappingMapper.TargetDto.Nested(
+            nested = FieldToFieldMappingMapper.TargetDto.Nested(
                 uuid = UUID.fromString(from.nested.srcUuid),
                 fromParent = from.toChild
             ),

@@ -4,12 +4,12 @@ import io.github.kotstruct.KotStructDescribedBy
 import io.github.kotstruct.KotStructDescriptor
 import io.github.kotstruct.KotStructDescriptor.Companion.kotStruct
 import io.github.kotstruct.KotStructMapper
-import io.github.kotstruct.descriptor.FieldMappingMapper.SourceDto
-import io.github.kotstruct.descriptor.FieldMappingMapper.TargetDto
+import io.github.kotstruct.descriptor.FieldToFieldMappingMapper.SourceDto
+import io.github.kotstruct.descriptor.FieldToFieldMappingMapper.TargetDto
 import java.util.UUID
 
-@KotStructDescribedBy(FieldMappingMapperDescriptor::class)
-interface FieldMappingMapper : KotStructMapper {
+@KotStructDescribedBy(FieldToFieldMappingMapperDescriptor::class)
+interface FieldToFieldMappingMapper : KotStructMapper {
 
     fun map(source: SourceDto): TargetDto
 
@@ -22,15 +22,15 @@ interface FieldMappingMapper : KotStructMapper {
     }
 }
 
-object FieldMappingMapperDescriptor : KotStructDescriptor by kotStruct({
+object FieldToFieldMappingMapperDescriptor : KotStructDescriptor by kotStruct({
     mappingFor<SourceDto, TargetDto> {
-        map { SourceDto::srcId } into { TargetDto::id }
+        mapField { SourceDto::srcId } into { TargetDto::id }
 
-        map { SourceDto::nested / SourceDto.Nested::srcUuid } into { TargetDto::nested / TargetDto.Nested::uuid }
+        mapField { SourceDto::nested / SourceDto.Nested::srcUuid } into { TargetDto::nested / TargetDto.Nested::uuid }
 
-        map { SourceDto::toChild } into { TargetDto::nested / TargetDto.Nested::fromParent}
+        mapField { SourceDto::toChild } into { TargetDto::nested / TargetDto.Nested::fromParent}
 
-        map { SourceDto::nested / SourceDto.Nested::toParent } into { TargetDto::fromChild }
+        mapField { SourceDto::nested / SourceDto.Nested::toParent } into { TargetDto::fromChild }
     }
 
     mapperFor<String, UUID> { UUID.fromString(it) }
