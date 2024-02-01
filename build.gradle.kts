@@ -19,8 +19,8 @@ allprojects {
     apply(plugin = "io.gitlab.arturbosch.detekt")
     apply(plugin = "org.gradle.maven-publish")
 
-    group = "io.github.kotstruct"
-    version = "1.0-SNAPSHOT"
+    group = property("group") ?: "com.github.vooft.kotstruct"
+    version = property("version") ?: "1.0-SNAPSHOT"
 
     detekt {
         buildUponDefaultConfig = true
@@ -50,8 +50,11 @@ publishing {
     listOf(project(":kotstruct-api"), project(":kotstruct-generator")).forEach { sub ->
         publications {
             create<MavenPublication>("${sub.name}-maven") {
+                println("Configuring artifact for ${sub.group}:${sub.name}:${sub.version}")
+
                 groupId = sub.group.toString()
                 artifactId = sub.name
+                version = sub.version.toString()
                 from(sub.components["java"])
             }
         }
