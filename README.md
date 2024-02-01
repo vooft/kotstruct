@@ -37,18 +37,21 @@ object FieldMappingMapperDescriptor : KotStructDescriptor by kotStruct({
     
     mappingFor<SourceDto, TargetDto> {
         // fields can be mapped on the same level with different names
-        map { SourceDto::srcId } into { TargetDto::id }
+        mapField { SourceDto::srcId } into { TargetDto::id }
+        
+        // can provide a factory for a value
+        mapFactory { UUID.randomUUID() } into { TargetDto::id }
 
         // also works with nested
-        map { SourceDto::nested / SourceDto.Nested::srcUuid } into { TargetDto::nested / TargetDto.Nested::uuid }
+        mapField { SourceDto::nested / SourceDto.Nested::srcUuid } into { TargetDto::nested / TargetDto.Nested::uuid }
 
         // can map from parent to child
-        map { SourceDto::toChild } into { TargetDto::nested / TargetDto.Nested::fromParent}
+        mapField { SourceDto::toChild } into { TargetDto::nested / TargetDto.Nested::fromParent}
 
         // and vice versa
-        map { SourceDto::nested / SourceDto.Nested::toParent } into { TargetDto::fromChild }
+        mapField { SourceDto::nested / SourceDto.Nested::toParent } into { TargetDto::fromChild }
     }
 })
 ```
 
-For a full example please refer to [kotstruct-example](./kotstruct-example).
+For a full example please refer to [kotstruct-test](./kotstruct-test).

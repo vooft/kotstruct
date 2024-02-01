@@ -1,7 +1,9 @@
 package io.github.kotstruct.dsl
 
 import io.github.kotstruct.FactoryMapping
+import io.github.kotstruct.FactoryToFieldMapping
 import io.github.kotstruct.FieldMapping
+import io.github.kotstruct.FieldToFieldMapping
 import io.github.kotstruct.MappingsDefinitions
 import io.github.kotstruct.TypeMapping
 import kotlin.reflect.KFunction
@@ -14,31 +16,31 @@ class KotStructDescriptorDsl {
 
     private val typeMappings = mutableListOf<TypeMapping<*, *>>()
     private val factoryMappings = mutableListOf<FactoryMapping<*>>()
-    private val fieldMappings = mutableListOf<FieldMapping<*, *>>()
-    fun <Source: Any, Target: Any> mapperFor(from: KType, to: KType, mapper: (Source) -> Target) {
+    private val fieldMappings = mutableListOf<FieldMapping<*>>()
+    fun <Source : Any, Target : Any> mapperFor(from: KType, to: KType, mapper: (Source) -> Target) {
         // TODO: validate only one from-to pair
         typeMappings.add(TypeMapping(from, to, mapper))
     }
 
-    inline fun <reified Source: Any, reified Target: Any> mapperFor(noinline mapper: (Source) -> Target) {
+    inline fun <reified Source : Any, reified Target : Any> mapperFor(noinline mapper: (Source) -> Target) {
         mapperFor(typeOf<Source>(), typeOf<Target>(), mapper)
     }
 
-    fun <Source: Any, Target: Any> mappingFor(source: KType, target: KType, block: MappingDsl<Source, Target>.() -> Unit) {
+    fun <Source : Any, Target : Any> mappingFor(source: KType, target: KType, block: MappingDsl<Source, Target>.() -> Unit) {
         val dsl = MappingDsl<Source, Target>(source = source, target = target)
         dsl.block()
         fieldMappings.addAll(dsl.build())
     }
 
-    inline fun <reified Source: Any, reified Target: Any> mappingFor(noinline block: MappingDsl<Source, Target>.() -> Unit) {
+    inline fun <reified Source : Any, reified Target : Any> mappingFor(noinline block: MappingDsl<Source, Target>.() -> Unit) {
         mappingFor(typeOf<Source>(), typeOf<Target>(), block)
     }
 
-    fun <Target: Any> factoryFor(target: KType, block: () -> KFunction<Target>) {
+    fun <Target : Any> factoryFor(target: KType, block: () -> KFunction<Target>) {
         factoryMappings.add(FactoryMapping(target, block()))
     }
 
-    inline fun <reified Target: Any> factoryFor(noinline block: () -> KFunction<Target>) {
+    inline fun <reified Target : Any> factoryFor(noinline block: () -> KFunction<Target>) {
         factoryFor(typeOf<Target>(), block)
     }
 
@@ -53,31 +55,47 @@ class KotStructDescriptorDsl {
     }
 }
 
-class MappingDsl<Source: Any, Target: Any>(private val source: KType, private val target: KType) {
+class MappingDsl<Source : Any, Target : Any>(private val source: KType, private val target: KType) {
 
-    private val fieldMappings = mutableListOf<FieldMapping<Source, Target>>()
+    private val fieldMappings = mutableListOf<FieldMapping<*>>()
 
-    fun <Return> map(block: PropertiesPathDsl<Source>.() -> KProperty<Return>): PropertiesPath<Return> {
+    fun <Return> mapField(block: PropertiesPathDsl<Source>.() -> KProperty<Return>): FieldMappingDefinition<Return> {
         val dsl = PropertiesPathDsl<Source>()
         val latest = dsl.block()
-        return PropertiesPath(dsl.build() + latest)
+        return PropertyPathFieldMappingDefinition(dsl.build() + latest)
     }
 
+    fun <Return> mapFactory(returnType: KType, factory: () -> Return): FieldMappingDefinition<Return> {
+        return FactoryFieldMapperStart(returnType, factory)
+    }
 
-    infix fun <R1, R2> PropertiesPath<R1>.into(block: PropertiesPathDsl<Target>.() -> KProperty1<*, R2>) {
+    inline fun <reified Return> mapFactory(noinline factory: () -> Return): FieldMappingDefinition<Return> {
+        return mapFactory(typeOf<Return>(), factory)
+    }
+
+    infix fun <R1, R2> FieldMappingDefinition<R1>.into(block: PropertiesPathDsl<Target>.() -> KProperty1<*, R2>) {
         val dsl = PropertiesPathDsl<Target>()
         val latest = dsl.block()
 
-        fieldMappings.add(FieldMapping(
-            from = source,
-            to = target,
-            fromPath = path,
-            toPath = dsl.build() + latest,
-            mapper = null
-        ))
+        val mapping = when (this) {
+            is FactoryFieldMapperStart -> FactoryToFieldMapping(
+                to = target,
+                toPath = dsl.build() + latest,
+                returnType = returnType,
+                factory = factory
+            )
+            is PropertyPathFieldMappingDefinition -> FieldToFieldMapping(
+                from = source,
+                to = target,
+                fromPath = path,
+                toPath = dsl.build() + latest,
+            )
+        }
+
+        fieldMappings.add(mapping)
     }
 
-    internal fun build(): List<FieldMapping<Source, Target>> {
+    internal fun build(): List<FieldMapping<*>> {
         println(source)
         println(target)
 
@@ -85,7 +103,13 @@ class MappingDsl<Source: Any, Target: Any>(private val source: KType, private va
     }
 }
 
-class PropertiesPathDsl<Source: Any> {
+sealed interface FieldMappingDefinition<T>
+
+internal data class FactoryFieldMapperStart<T>(val returnType: KType, val factory: () -> T) : FieldMappingDefinition<T>
+
+data class PropertyPathFieldMappingDefinition<T>(val path: List<KProperty<*>>) : FieldMappingDefinition<T>
+
+class PropertiesPathDsl<Source : Any> {
 
     private val currentPath = mutableListOf<KProperty<*>>()
 
@@ -98,5 +122,3 @@ class PropertiesPathDsl<Source: Any> {
         return currentPath.toList()
     }
 }
-
-data class PropertiesPath<T>(val path: List<KProperty<*>>)

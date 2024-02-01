@@ -1,4 +1,4 @@
-package io.github.kotstruct.happy.fieldmapper
+package io.github.kotstruct.happy.fieldmapper.factorytofield
 
 import com.tschuchort.compiletesting.KotlinCompilation
 import com.tschuchort.compiletesting.kspSourcesDir
@@ -7,18 +7,17 @@ import io.github.kotstruct.GENERATED_PACKAGE
 import io.github.kotstruct.GENERATED_PREFIX
 import io.github.kotstruct.KotStructDescribedBy
 import io.github.kotstruct.KotStructDescriptor
-import io.github.kotstruct.KotStructDescriptor.Companion.kotStruct
 import io.github.kotstruct.KotStructMapper
 import io.github.kotstruct.KotStructMapperDslProcessorProvider
-import io.github.kotstruct.happy.fieldmapper.HappyPathFieldMapperTest.Mappers.MyMapper
 import io.kotest.matchers.paths.shouldExist
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
+import java.time.Instant
 import java.util.UUID
 import kotlin.io.path.Path
 import kotlin.io.path.readText
 
-class HappyPathFieldMapperTest {
+class HappyPathFactoryToFieldMapperTest {
     @Test
     fun `should generate class with field mappings`() {
         val compilation = KotlinCompilation().also {
@@ -32,17 +31,17 @@ class HappyPathFieldMapperTest {
 
         val generatedFile = compilation.kspSourcesDir.toPath().resolve("kotlin")
             .resolve(Path(".", *GENERATED_PACKAGE.split(".").toTypedArray()))
-            .resolve("$GENERATED_PREFIX${MyMapper::class.simpleName}.kt")
+            .resolve("$GENERATED_PREFIX${Mappers.MyMapper::class.simpleName}.kt")
         generatedFile.shouldExist()
         println(generatedFile.readText())
     }
 
     @Suppress("unused")
     class Mappers {
-        data class SourceDto(val srcId: String, val nested: Nested) {
+        data class SourceDto(val nested: Nested) {
             data class Nested(val srcUuid: String)
         }
-        data class TargetDto(val id: String, val nested: Nested) {
+        data class TargetDto(val instant: Instant, val nested: Nested) {
             data class Nested(val uuid: UUID)
         }
 
@@ -51,13 +50,12 @@ class HappyPathFieldMapperTest {
             fun map(src: SourceDto): TargetDto
         }
 
-        object MyMapperDescriptor : KotStructDescriptor by kotStruct({
+        object MyMapperDescriptor : KotStructDescriptor by KotStructDescriptor.kotStruct({
             mapperFor<String, UUID> { UUID.fromString(it) }
             mappingFor<SourceDto, TargetDto> {
-                map { SourceDto::srcId } into { TargetDto::id }
-                map { SourceDto::nested / SourceDto.Nested::srcUuid } into { TargetDto::nested / TargetDto.Nested::uuid }
+                mapFactory { UUID.randomUUID() } into { TargetDto::nested / TargetDto.Nested::uuid }
+                mapFactory { Instant.now() } into { TargetDto::instant }
             }
         })
     }
 }
-
