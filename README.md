@@ -54,4 +54,6 @@ object FieldMappingMapperDescriptor : KotStructDescriptor by kotStruct({
 })
 ```
 
-For a full example please refer to [kotstruct-test](./kotstruct-test).
+For mapper examples please refer to [kotstruct-test](./kotstruct-test).
+
+For a more comprehensive example please check [kotstruct-example](https://github.com/vooft/kotstruct-example)
