@@ -1,7 +1,7 @@
 [versions]
 kotlin = "1.9.22"
 ksp = "1.9.22-1.0.18"
-kotest = "5.8.0"
+kotest = "5.8.1"
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
