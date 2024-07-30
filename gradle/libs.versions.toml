@@ -1,6 +1,6 @@
 [versions]
 kotlin = "2.0.0"
-ksp = "2.0.0-1.0.22"
+ksp = "2.0.0-1.0.24"
 kotest = "5.9.1"
 
 [plugins]
